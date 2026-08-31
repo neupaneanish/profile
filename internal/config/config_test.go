@@ -3,9 +3,13 @@
 package config_test
 
 import (
+	"log/slog"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"neupaneanish.com.np/profile/internal/config"
 	"neupaneanish.com.np/profile/tests"
 )
 
@@ -35,4 +39,53 @@ func TestMain(m *testing.M) {
 	dbCleanup()
 
 	os.Exit(code)
+}
+
+func TestNewConfig(t *testing.T) {
+	t.Parallel()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+
+		env := &config.Env{
+			DatabaseURL:  databaseURL,
+			ValkeyURL:    valkeyURL,
+			Port:         "50051",
+			ServiceName:  "Test Service",
+			Environment:  "production",
+			TelemetryURL: "127.0.0.1:4317",
+		}
+
+		cfg, cfgErr := config.NewConfig(t.Context(), env, logger)
+		require.NoError(t, cfgErr)
+		assert.NotNil(t, cfg)
+
+		cfg.Close()
+	})
+
+	t.Run("Invalid Pool", func(t *testing.T) {
+		t.Parallel()
+
+		env := &config.Env{
+			DatabaseURL: "invalid-url",
+		}
+
+		cfg, cfgErr := config.NewConfig(t.Context(), env, logger)
+		require.Error(t, cfgErr)
+		assert.Nil(t, cfg)
+	})
+
+	t.Run("Invalid Client", func(t *testing.T) {
+		t.Parallel()
+
+		env := &config.Env{
+			DatabaseURL: databaseURL,
+			ValkeyURL:   "invalid",
+		}
+
+		cfg, cfgErr := config.NewConfig(t.Context(), env, logger)
+		require.Error(t, cfgErr)
+		assert.Nil(t, cfg)
+	})
 }
