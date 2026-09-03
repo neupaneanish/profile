@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ErrInternalServer   = status.Error(codes.Internal, "Internal Server Error")
-	ErrCanceled         = status.Error(codes.Canceled, "Request canceled by client")
-	ErrRequestTimeout   = status.Error(codes.DeadlineExceeded, "Request timeout exceeded")
-	ErrUnauthenticated  = status.Error(codes.Unauthenticated, "Session Expired")
-	ErrPermissionDenied = status.Error(codes.PermissionDenied, "Don't have access")
+	ErrInternalServer       = status.Error(codes.Internal, "Internal Server Error")
+	ErrCanceled             = status.Error(codes.Canceled, "Request canceled by client")
+	ErrRequestTimeout       = status.Error(codes.DeadlineExceeded, "Request timeout exceeded")
+	ErrUnauthenticated      = status.Error(codes.Unauthenticated, "Session Expired")
+	ErrPermissionDenied     = status.Error(codes.PermissionDenied, "Don't have access")
+	ErrProfileAlreadyExists = status.Error(codes.AlreadyExists, "Profile already exists")
 )

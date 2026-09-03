@@ -12,13 +12,16 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"uuid"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 	"neupaneanish.com.np/profile/internal/config"
+	"neupaneanish.com.np/profile/internal/enum"
 	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
@@ -144,7 +147,7 @@ func setupContainer(logger *slog.Logger) *container {
 func runMigrations(url string) error {
 	_, b, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(b), "..", "..")
-	migrationsPath := filepath.Join(root, "database", "Profile/migrations")
+	migrationsPath := filepath.Join(root, "database", "profile/migrations")
 
 	db, dbErr := sql.Open("postgres", url)
 	if dbErr != nil {
@@ -234,4 +237,17 @@ func testClientServer(cfg *config.Config, logger *slog.Logger) (*grpc.ClientConn
 	}
 
 	return client, server, nil
+}
+
+func contextWithValue(t *testing.T, userID uuid.UUID, role enum.UserRole) context.Context {
+	t.Helper()
+
+	md := metadata.Pairs(
+		"x-user-id", userID.String(),
+		"x-role", string(role),
+		"x-jti", uuid.NewV7().String(),
+	)
+
+	ctx := metadata.NewOutgoingContext(t.Context(), md)
+	return ctx
 }

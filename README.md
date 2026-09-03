@@ -44,6 +44,9 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, and Valkey.
 
 ### Gateway
 
+- [X] Create profile
+- [ ] Update Profile
+
 ### Root
 
 ---
