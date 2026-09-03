@@ -41,15 +41,49 @@ func NewOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
 		return errs.ErrInternalServer
 	})
 
-	externalEndpoints := map[string]struct{}{
+	authFunc := func(ctx context.Context) (context.Context, error) {
+		return AuthInterceptor(ctx, externalEndpoints(), gatewayEndpoints(), rootEndpoints())
+	}
+
+	opts := []grpc.ServerOption{
+		grpc.StatsHandler(oTelHandler),
+		grpc.ChainUnaryInterceptor(
+			recovery.UnaryServerInterceptor(recoveryOpt),
+			UnaryTimeoutInterceptor(interceptorTimeout),
+			protovalidatemiddleware.UnaryServerInterceptor(validator),
+			logging.UnaryServerInterceptor(
+				LoggerInterceptor(cfg.Logger),
+				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+			),
+			auth.UnaryServerInterceptor(authFunc),
+		),
+		grpc.ChainStreamInterceptor(
+			recovery.StreamServerInterceptor(recoveryOpt),
+			StreamTimeoutInterceptor(maxTimeout),
+			protovalidatemiddleware.StreamServerInterceptor(validator),
+			logging.StreamServerInterceptor(
+				LoggerInterceptor(cfg.Logger),
+				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+			),
+			auth.StreamServerInterceptor(authFunc),
+		),
+	}
+
+	return opts, nil
+}
+
+func externalEndpoints() map[string]struct{} {
+	return map[string]struct{}{
 		externalProfilev1.ExternalProfileService_Profile_FullMethodName:     {},
 		externalProfilev1.ExternalProfileService_About_FullMethodName:       {},
 		externalProfilev1.ExternalProfileService_Educations_FullMethodName:  {},
 		externalProfilev1.ExternalProfileService_Experiences_FullMethodName: {},
 		externalProfilev1.ExternalProfileService_Socials_FullMethodName:     {},
 	}
+}
 
-	gatewayEndpoints := map[string]struct{}{
+func gatewayEndpoints() map[string]struct{} {
+	return map[string]struct{}{
 		// Profile
 		gatewayProfilev1.GatewayProfileService_Profile_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_CreateProfile_FullMethodName: {},
@@ -83,8 +117,10 @@ func NewOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
 		gatewayProfilev1.GatewayProfileService_DeleteSocial_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_Socials_FullMethodName:      {},
 	}
+}
 
-	rootEndpoints := map[string]struct{}{
+func rootEndpoints() map[string]struct{} {
+	return map[string]struct{}{
 		// Profile
 		rootProfilev1.RootProfileService_UpdateProfile_FullMethodName: {},
 		rootProfilev1.RootProfileService_Profile_FullMethodName:       {},
@@ -111,34 +147,4 @@ func NewOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
 		rootProfilev1.RootProfileService_UpdateSocial_FullMethodName: {},
 		rootProfilev1.RootProfileService_Socials_FullMethodName:      {},
 	}
-
-	authFunc := func(ctx context.Context) (context.Context, error) {
-		return AuthInterceptor(ctx, externalEndpoints, gatewayEndpoints, rootEndpoints)
-	}
-
-	opts := []grpc.ServerOption{
-		grpc.StatsHandler(oTelHandler),
-		grpc.ChainUnaryInterceptor(
-			recovery.UnaryServerInterceptor(recoveryOpt),
-			UnaryTimeoutInterceptor(interceptorTimeout),
-			protovalidatemiddleware.UnaryServerInterceptor(validator),
-			logging.UnaryServerInterceptor(
-				LoggerInterceptor(cfg.Logger),
-				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
-			),
-			auth.UnaryServerInterceptor(authFunc),
-		),
-		grpc.ChainStreamInterceptor(
-			recovery.StreamServerInterceptor(recoveryOpt),
-			StreamTimeoutInterceptor(maxTimeout),
-			protovalidatemiddleware.StreamServerInterceptor(validator),
-			logging.StreamServerInterceptor(
-				LoggerInterceptor(cfg.Logger),
-				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
-			),
-			auth.StreamServerInterceptor(authFunc),
-		),
-	}
-
-	return opts, nil
 }
