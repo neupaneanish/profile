@@ -12,4 +12,6 @@ var (
 	ErrUnauthenticated      = status.Error(codes.Unauthenticated, "Session Expired")
 	ErrPermissionDenied     = status.Error(codes.PermissionDenied, "Don't have access")
 	ErrProfileAlreadyExists = status.Error(codes.AlreadyExists, "Profile already exists")
+	ErrProfileNotFound      = status.Error(codes.AlreadyExists, "Profile not found")
+	ErrInvalidUserID        = status.Error(codes.AlreadyExists, "Invalid UserID")
 )
