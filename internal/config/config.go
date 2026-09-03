@@ -6,12 +6,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/valkey-io/valkey-go"
+	"neupaneanish.com.np/profile/internal/repository"
 )
 
 type Config struct {
-	Pool   *pgxpool.Pool
-	Client valkey.Client
-	Logger *slog.Logger
+	Pool       *pgxpool.Pool
+	Client     valkey.Client
+	Repository repository.Querier
+	Logger     *slog.Logger
 }
 
 func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, error) {
@@ -26,9 +28,10 @@ func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, err
 	}
 
 	return &Config{
-		Pool:   pool,
-		Client: client,
-		Logger: logger,
+		Pool:       pool,
+		Client:     client,
+		Repository: repository.New(pool),
+		Logger:     logger,
 	}, nil
 }
 

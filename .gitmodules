@@ -1,0 +1,6 @@
+[submodule "protobuf"]
+	path = protobuf
+	url = git@github.com:neupaneanish/protobuf.git
+[submodule "database"]
+	path = database
+	url = git@github.com:neupaneanish/database.git
