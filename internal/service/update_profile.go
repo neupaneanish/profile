@@ -48,7 +48,7 @@ func (s *RootProfileService) UpdateProfile(
 	serviceName := "RootUpdateProfile"
 	userSession := utils.UserSessionContext(ctx)
 
-	userID, userIDErr := parseUserID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
@@ -91,7 +91,7 @@ func updateProfile(
 	if rowErr != nil {
 		if errors.Is(rowErr, pgx.ErrNoRows) {
 			logger.WarnContext(ctx, "Concurrent profile update detected", "service", serviceName, "userID", userID)
-			return nil, errs.ErrProfileConflict
+			return nil, errs.ErrConflict
 		}
 		logger.ErrorContext(ctx, "Update Profile Failed", "service", serviceName, "error", rowErr)
 		return nil, errs.ErrInternalServer

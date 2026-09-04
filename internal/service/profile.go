@@ -36,7 +36,7 @@ func (s *RootProfileService) Profile(
 	req *rootProfilev1.ProfileRequest,
 ) (*rootProfilev1.ProfileResponse, error) {
 	serviceName := "RootProfile"
-	userID, userIDErr := parseUserID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
@@ -60,7 +60,7 @@ func profile(
 	if rowErr != nil {
 		if errors.Is(rowErr, pgx.ErrNoRows) {
 			logger.WarnContext(ctx, "Profile not found", "service", serviceName)
-			return nil, errs.ErrProfileNotFound
+			return nil, errs.ErrNotFound
 		}
 		logger.ErrorContext(ctx, "Profile query failed", "service", serviceName, "error", rowErr)
 		return nil, errs.ErrInternalServer
@@ -77,7 +77,7 @@ func profile(
 	}, nil
 }
 
-func parseUserID(ctx context.Context, userIDStr, serviceName string, logger *slog.Logger) (uuid.UUID, error) {
+func parseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.Logger) (uuid.UUID, error) {
 	userID, uuidErr := uuid.Parse(userIDStr)
 	if uuidErr != nil {
 		logger.WarnContext(ctx, "Failed to parse userID", "service", serviceName, "userID", userIDStr)

@@ -114,7 +114,7 @@ func gatewayUpdateProfileErr(t *testing.T, userID uuid.UUID, name, title string,
 	res, err := gatewayProfileServiceClient.UpdateProfile(ctx, req)
 	require.Error(t, err)
 	assert.Nil(t, res)
-	assert.Equal(t, errs.ErrProfileConflict, err)
+	assert.Equal(t, errs.ErrConflict, err)
 }
 
 func rootUpdateProfileErr(t *testing.T, adminID, userID uuid.UUID, name, title string, updatedAt time.Time) {
@@ -132,5 +132,5 @@ func rootUpdateProfileErr(t *testing.T, adminID, userID uuid.UUID, name, title s
 	res, err := rootProfileServiceClient.UpdateProfile(ctx, req)
 	require.Error(t, err)
 	assert.Nil(t, res)
-	assert.Equal(t, errs.ErrProfileConflict, err)
+	assert.Equal(t, errs.ErrConflict, err)
 }

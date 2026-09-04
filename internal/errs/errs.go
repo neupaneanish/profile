@@ -12,9 +12,9 @@ var (
 	ErrUnauthenticated      = status.Error(codes.Unauthenticated, "Session Expired")
 	ErrPermissionDenied     = status.Error(codes.PermissionDenied, "Don't have access")
 	ErrProfileAlreadyExists = status.Error(codes.AlreadyExists, "Profile already exists")
-	ErrProfileNotFound      = status.Error(codes.AlreadyExists, "Profile not found")
-	ErrInvalidUserID        = status.Error(codes.AlreadyExists, "Invalid UserID")
-	ErrProfileConflict      = status.Error(
+	ErrNotFound             = status.Error(codes.NotFound, "Not found")
+	ErrInvalidUserID        = status.Error(codes.InvalidArgument, "Invalid UserID")
+	ErrConflict             = status.Error(
 		codes.FailedPrecondition,
 		"Something went wrong, please refresh and try again",
 	)

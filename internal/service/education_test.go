@@ -1,5 +1,3 @@
-//go:build integration
-
 package service_test
 
 import (
@@ -14,15 +12,16 @@ import (
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
-func TestGatewayProfile(t *testing.T) {
+func TestGatewayEducation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Not Found", func(t *testing.T) {
 		t.Parallel()
-
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
-		req := &gatewayProfilev1.ProfileRequest{}
-		res, err := gatewayProfileServiceClient.Profile(ctx, req)
+
+		req := &gatewayProfilev1.EducationRequest{Id: uuid.NewV7().String()}
+
+		res, err := gatewayProfileServiceClient.Education(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
 		assert.Equal(t, errs.ErrNotFound, err)
@@ -31,26 +30,29 @@ func TestGatewayProfile(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
-		seedProfile(t, userID)
 
-		ctx := contextWithValue(t, userID, enum.UserRoleRoot)
-		req := &gatewayProfilev1.ProfileRequest{}
-		res, err := gatewayProfileServiceClient.Profile(ctx, req)
+		ctx := contextWithValue(t, userID, enum.UserRoleUser)
+
+		id := seedEducation(t, userID)
+
+		req := &gatewayProfilev1.EducationRequest{Id: id.String()}
+		res, err := gatewayProfileServiceClient.Education(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, userID.String(), res.GetProfile().GetUserId())
+		assert.Equal(t, id.String(), res.GetEducation().GetId())
 	})
 }
 
-func TestRootProfile(t *testing.T) {
+func TestRootEducation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Not Found", func(t *testing.T) {
 		t.Parallel()
-
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
-		req := &rootProfilev1.ProfileRequest{UserId: uuid.NewV7().String()}
-		res, err := rootProfileServiceClient.Profile(ctx, req)
+
+		req := &rootProfilev1.EducationRequest{Id: uuid.NewV7().String(), UserId: uuid.NewV7().String()}
+
+		res, err := rootProfileServiceClient.Education(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
 		assert.Equal(t, errs.ErrNotFound, err)
@@ -59,13 +61,16 @@ func TestRootProfile(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
-		seedProfile(t, userID)
 
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
-		req := &rootProfilev1.ProfileRequest{UserId: userID.String()}
-		res, err := rootProfileServiceClient.Profile(ctx, req)
+
+		id := seedEducation(t, userID)
+
+		req := &rootProfilev1.EducationRequest{Id: id.String(), UserId: userID.String()}
+		res, err := rootProfileServiceClient.Education(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, userID.String(), res.GetProfile().GetUserId())
+		assert.Equal(t, id.String(), res.GetEducation().GetId())
+		assert.Equal(t, userID.String(), res.GetEducation().GetUserId())
 	})
 }

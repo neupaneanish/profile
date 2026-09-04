@@ -1,5 +1,3 @@
-//go:build integration || benchmark || e2e
-
 package service_test
 
 import (
@@ -277,4 +275,40 @@ func getProfile(t *testing.T, userID uuid.UUID) *repository.Profile {
 	profile, err := cfg.Repository.Profile(t.Context(), params)
 	require.NoError(t, err)
 	return profile
+}
+
+func seedEducation(t *testing.T, userID uuid.UUID) uuid.UUID {
+	t.Helper()
+	createParams := &repository.CreateEducationParams{
+		UserID:        userID,
+		School:        "Westcliff University",
+		Degree:        "Master of Science in Computer Science",
+		Affiliation:   nil,
+		FieldOfStudy:  nil,
+		Concentration: nil,
+		StartDate:     time.Date(2024, time.September, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:       nil,
+		Address:       "United State",
+		Description:   nil,
+		CreatedBy:     userID,
+		UpdatedBy:     userID,
+	}
+	id, err := cfg.Repository.CreateEducation(t.Context(), createParams)
+	require.NoError(t, err)
+	return id
+
+}
+
+func getEducation(t *testing.T, userID uuid.UUID) *repository.Education {
+	t.Helper()
+	id := seedEducation(t, userID)
+
+	getParams := &repository.EducationParams{
+		ID:     id,
+		UserID: userID,
+	}
+	education, eduErr := cfg.Repository.Education(t.Context(), getParams)
+	require.NoError(t, eduErr)
+
+	return education
 }
