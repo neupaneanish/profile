@@ -1,3 +1,5 @@
+//go:build integration
+
 package service_test
 
 import (
@@ -19,7 +21,10 @@ func TestDeleteEducation(t *testing.T) {
 	t.Run("No Education", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
-		req := &gatewayProfilev1.DeleteEducationRequest{Id: uuid.NewV7().String(), UpdatedAt: timestamppb.New(time.Now())}
+		req := &gatewayProfilev1.DeleteEducationRequest{
+			Id:        uuid.NewV7().String(),
+			UpdatedAt: timestamppb.New(time.Now()),
+		}
 
 		res, err := gatewayProfileServiceClient.DeleteEducation(ctx, req)
 		require.Error(t, err)
@@ -33,7 +38,10 @@ func TestDeleteEducation(t *testing.T) {
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 		education := getEducation(t, userID)
 
-		req := &gatewayProfilev1.DeleteEducationRequest{Id: education.ID.String(), UpdatedAt: timestamppb.New(education.UpdatedAt)}
+		req := &gatewayProfilev1.DeleteEducationRequest{
+			Id:        education.ID.String(),
+			UpdatedAt: timestamppb.New(education.UpdatedAt),
+		}
 		res, err := gatewayProfileServiceClient.DeleteEducation(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)

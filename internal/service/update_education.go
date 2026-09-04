@@ -94,7 +94,16 @@ func updateEducation(
 	eduID, err := repo.UpdateEducation(ctx, params)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			logger.WarnContext(ctx, "Concurrent education update detected", "service", serviceName, "userID", userID, "id", id.String())
+			logger.WarnContext(
+				ctx,
+				"Concurrent education update detected",
+				"service",
+				serviceName,
+				"userID",
+				userID,
+				"id",
+				id.String(),
+			)
 			return uuid.Nil(), errs.ErrConflict
 		}
 		logger.ErrorContext(ctx, "Update Education Failed", "service", serviceName, "error", err)

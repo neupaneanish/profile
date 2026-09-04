@@ -1,3 +1,4 @@
+//nolint:dupl // Clean handler pattern intentionally mirrors Educations
 package service
 
 import (
@@ -72,7 +73,7 @@ func educations(
 			School:    e.School,
 			Degree:    e.Degree,
 			StartDate: timestamppb.New(e.StartDate),
-			EndDate:   timestamppbValue(e.EndDate),
+			EndDate:   TimestamppbValue(e.EndDate),
 		}
 	}
 	return res, nil

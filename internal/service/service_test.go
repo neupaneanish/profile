@@ -1,3 +1,5 @@
+//go:build integration
+
 package service_test
 
 import (
@@ -296,7 +298,6 @@ func seedEducation(t *testing.T, userID uuid.UUID) uuid.UUID {
 	id, err := cfg.Repository.CreateEducation(t.Context(), createParams)
 	require.NoError(t, err)
 	return id
-
 }
 
 func getEducation(t *testing.T, userID uuid.UUID) *repository.Education {
@@ -311,4 +312,46 @@ func getEducation(t *testing.T, userID uuid.UUID) *repository.Education {
 	require.NoError(t, eduErr)
 
 	return education
+}
+
+func seedExperience(t *testing.T, userID uuid.UUID) uuid.UUID {
+	t.Helper()
+
+	var description *string
+	descriptionValue := "Computer Science Teacher"
+	description = &descriptionValue
+
+	var endDate *time.Time
+	endDateValue := time.Date(2024, time.August, 14, 0, 0, 0, 0, time.UTC)
+	endDate = &endDateValue
+
+	createParams := &repository.CreateExperienceParams{
+		UserID:       userID,
+		Title:        "Teacher",
+		CompanyName:  "Oxford College of Engineering and Management",
+		Location:     "Nepal",
+		LocationType: enum.LocationTypeHybrid,
+		StartDate:    time.Date(2023, time.June, 15, 0, 0, 0, 0, time.UTC),
+		EndDate:      endDate,
+		Description:  description,
+		CreatedBy:    userID,
+		UpdatedBy:    userID,
+	}
+	id, err := cfg.Repository.CreateExperience(t.Context(), createParams)
+	require.NoError(t, err)
+	return id
+}
+
+func getExperience(t *testing.T, userID uuid.UUID) *repository.Experience {
+	t.Helper()
+	id := seedExperience(t, userID)
+
+	getParams := &repository.ExperienceParams{
+		ID:     id,
+		UserID: userID,
+	}
+	experience, eduErr := cfg.Repository.Experience(t.Context(), getParams)
+	require.NoError(t, eduErr)
+
+	return experience
 }

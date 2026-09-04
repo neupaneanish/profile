@@ -1,3 +1,5 @@
+//go:build integration
+
 package service_test
 
 import (
@@ -23,7 +25,7 @@ func TestGatewayEducations(t *testing.T) {
 		res, err := gatewayProfileServiceClient.Educations(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Len(t, res.GetEducations(), 0)
+		assert.Empty(t, res.GetEducations())
 	})
 }
 

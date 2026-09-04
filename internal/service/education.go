@@ -60,12 +60,12 @@ func education(
 	logger *slog.Logger,
 	id string, serviceName string,
 ) (*profilev1.Education, error) {
-	ID, IDErr := parseUUID(ctx, id, serviceName, logger)
-	if IDErr != nil {
-		return nil, IDErr
+	idx, idxErr := parseUUID(ctx, id, serviceName, logger)
+	if idxErr != nil {
+		return nil, idxErr
 	}
 
-	params := &repository.EducationParams{ID: ID, UserID: userID}
+	params := &repository.EducationParams{ID: idx, UserID: userID}
 
 	row, err := repo.Education(ctx, params)
 	if err != nil {
@@ -82,13 +82,13 @@ func education(
 		UserId:        row.UserID.String(),
 		School:        row.School,
 		Degree:        row.Degree,
-		Affiliation:   stringpbValue(row.Affiliation),
-		FieldOfStudy:  stringpbValue(row.FieldOfStudy),
-		Concentration: stringpbValue(row.Concentration),
+		Affiliation:   StringpbValue(row.Affiliation),
+		FieldOfStudy:  StringpbValue(row.FieldOfStudy),
+		Concentration: StringpbValue(row.Concentration),
 		StartDate:     timestamppb.New(row.StartDate),
-		EndDate:       timestamppbValue(row.EndDate),
+		EndDate:       TimestamppbValue(row.EndDate),
 		Address:       row.Address,
-		Description:   stringpbValue(row.Concentration),
+		Description:   StringpbValue(row.Concentration),
 		CreatedAt:     timestamppb.New(row.CreatedAt),
 		CreatedBy:     row.CreatedBy.String(),
 		UpdatedAt:     timestamppb.New(row.UpdatedAt),

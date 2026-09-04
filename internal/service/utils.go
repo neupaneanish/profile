@@ -23,14 +23,14 @@ func timestampValue(ts *timestamppb.Timestamp) *time.Time {
 	return &t
 }
 
-func timestamppbValue(t *time.Time) *timestamppb.Timestamp {
+func TimestamppbValue(t *time.Time) *timestamppb.Timestamp {
 	if t == nil {
 		return nil
 	}
 	return timestamppb.New(*t)
 }
 
-func stringpbValue(s *string) *wrapperspb.StringValue {
+func StringpbValue(s *string) *wrapperspb.StringValue {
 	if s == nil {
 		return nil
 	}
