@@ -1,3 +1,4 @@
+//nolint:dupl // Clean handler pattern intentionally mirrors Education Delete
 package service
 
 import (
