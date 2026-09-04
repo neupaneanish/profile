@@ -12,10 +12,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 	"uuid"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -25,6 +27,7 @@ import (
 	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/service"
 	"neupaneanish.com.np/profile/internal/telemetry"
 	"neupaneanish.com.np/profile/internal/transport"
@@ -250,4 +253,28 @@ func contextWithValue(t *testing.T, userID uuid.UUID, role enum.UserRole) contex
 
 	ctx := metadata.NewOutgoingContext(t.Context(), md)
 	return ctx
+}
+
+func seedProfile(t *testing.T, userID uuid.UUID) {
+	t.Helper()
+
+	params := &repository.CreateProfileParams{
+		UserID:    userID,
+		Name:      "Anish Neupane",
+		Title:     "Backend Developer",
+		Dob:       time.Now(),
+		CreatedBy: userID,
+		UpdatedBy: userID,
+	}
+	_, createErr := cfg.Repository.CreateProfile(t.Context(), params)
+	require.NoError(t, createErr)
+}
+
+func getProfile(t *testing.T, userID uuid.UUID) *repository.Profile {
+	t.Helper()
+	seedProfile(t, userID)
+	params := &repository.ProfileParams{UserID: userID}
+	profile, err := cfg.Repository.Profile(t.Context(), params)
+	require.NoError(t, err)
+	return profile
 }

@@ -13,7 +13,6 @@ import (
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
-	"neupaneanish.com.np/profile/internal/repository"
 )
 
 func TestCreateProfile(t *testing.T) {
@@ -51,19 +50,4 @@ func TestCreateProfile(t *testing.T) {
 		assert.Nil(t, res)
 		assert.Equal(t, errs.ErrProfileAlreadyExists, err)
 	})
-}
-
-func seedProfile(t *testing.T, userID uuid.UUID) {
-	t.Helper()
-
-	params := &repository.CreateProfileParams{
-		UserID:    userID,
-		Name:      "Anish Neupane",
-		Title:     "Backend Developer",
-		Dob:       time.Now(),
-		CreatedBy: userID,
-		UpdatedBy: userID,
-	}
-	_, createErr := cfg.Repository.CreateProfile(t.Context(), params)
-	require.NoError(t, createErr)
 }

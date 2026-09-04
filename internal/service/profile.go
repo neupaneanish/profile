@@ -48,7 +48,13 @@ func (s *RootProfileService) Profile(
 	return &rootProfilev1.ProfileResponse{Profile: res}, nil
 }
 
-func profile(ctx context.Context, userID uuid.UUID, serviceName string, repo repository.Querier, logger *slog.Logger) (*profilev1.Profile, error) {
+func profile(
+	ctx context.Context,
+	userID uuid.UUID,
+	serviceName string,
+	repo repository.Querier,
+	logger *slog.Logger,
+) (*profilev1.Profile, error) {
 	params := &repository.ProfileParams{UserID: userID}
 	row, rowErr := repo.Profile(ctx, params)
 	if rowErr != nil {
