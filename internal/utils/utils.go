@@ -56,6 +56,11 @@ func StringpbValue(s *string) *wrapperspb.StringValue {
 	return wrapperspb.String(*s)
 }
 
+const (
+	PlatformsNameKey = "platforms_name_key"
+	PlatformURLKey   = "platforms_url_key"
+)
+
 func ValidateURL(domain string) (string, error) {
 	input := strings.ToLower(domain)
 
