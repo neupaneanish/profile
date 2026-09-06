@@ -21,20 +21,19 @@ func (s *GatewayProfileService) CreateProfile(
 
 	params := &repository.CreateProfileParams{
 		UserID:    userSession.UserID,
-		Name:      req.GetName(),
-		Title:     req.GetTitle(),
+		Name:      req.GetProfile().GetName(),
+		Title:     req.GetProfile().GetTitle(),
 		Dob:       req.GetDob().AsTime(),
 		CreatedBy: userSession.UserID,
 		UpdatedBy: userSession.UserID,
 	}
 
-	_, cmdTagErr := s.cfg.Repository.CreateProfile(ctx, params)
-	if cmdTagErr != nil {
-		if pgxErr, ok := errors.AsType[*pgconn.PgError](cmdTagErr); ok && pgxErr.Code == pgerrcode.UniqueViolation {
+	if err := s.cfg.Repository.CreateProfile(ctx, params); err != nil {
+		if pgxErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgxErr.Code == pgerrcode.UniqueViolation {
 			s.cfg.Logger.WarnContext(ctx, "Profile already created", "service", serviceName)
 			return nil, errs.ErrProfileAlreadyExists
 		}
-		s.cfg.Logger.ErrorContext(ctx, "Failed to insert profile", "service", serviceName, "error", cmdTagErr)
+		s.cfg.Logger.ErrorContext(ctx, "Failed to insert profile", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
 

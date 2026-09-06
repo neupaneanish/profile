@@ -43,11 +43,13 @@ func TestGatewayUpdateProfile(t *testing.T) {
 
 		name := "Neupane Anish"
 
-		req := &gatewayProfilev1.UpdateProfileRequest{Profile: &profilev1.UpdateProfile{
-			Name:      name,
-			Title:     profile.Title,
+		req := &gatewayProfilev1.UpdateProfileRequest{
+			Profile: &profilev1.CreateUpdateProfile{
+				Name:  name,
+				Title: profile.Title,
+			},
 			UpdatedAt: timestamppb.New(profile.UpdatedAt),
-		}}
+		}
 
 		res, err := gatewayProfileServiceClient.UpdateProfile(ctx, req)
 		require.NoError(t, err)
@@ -87,11 +89,11 @@ func TestRootUpdateProfile(t *testing.T) {
 
 		req := &rootProfilev1.UpdateProfileRequest{
 			UserId: profile.UserID.String(),
-			Profile: &profilev1.UpdateProfile{
-				Name:      name,
-				Title:     profile.Title,
-				UpdatedAt: timestamppb.New(profile.UpdatedAt),
+			Profile: &profilev1.CreateUpdateProfile{
+				Name:  name,
+				Title: profile.Title,
 			},
+			UpdatedAt: timestamppb.New(profile.UpdatedAt),
 		}
 
 		res, err := rootProfileServiceClient.UpdateProfile(ctx, req)
@@ -105,11 +107,13 @@ func TestRootUpdateProfile(t *testing.T) {
 func gatewayUpdateProfileErr(t *testing.T, userID uuid.UUID, name, title string, updatedAt time.Time) {
 	ctx := contextWithValue(t, userID, enum.UserRoleUser)
 
-	req := &gatewayProfilev1.UpdateProfileRequest{Profile: &profilev1.UpdateProfile{
-		Name:      name,
-		Title:     title,
+	req := &gatewayProfilev1.UpdateProfileRequest{
+		Profile: &profilev1.CreateUpdateProfile{
+			Name:  name,
+			Title: title,
+		},
 		UpdatedAt: timestamppb.New(updatedAt),
-	}}
+	}
 
 	res, err := gatewayProfileServiceClient.UpdateProfile(ctx, req)
 	require.Error(t, err)
@@ -122,11 +126,11 @@ func rootUpdateProfileErr(t *testing.T, adminID, userID uuid.UUID, name, title s
 
 	req := &rootProfilev1.UpdateProfileRequest{
 		UserId: userID.String(),
-		Profile: &profilev1.UpdateProfile{
-			Name:      name,
-			Title:     title,
-			UpdatedAt: timestamppb.New(updatedAt),
+		Profile: &profilev1.CreateUpdateProfile{
+			Name:  name,
+			Title: title,
 		},
+		UpdatedAt: timestamppb.New(updatedAt),
 	}
 
 	res, err := rootProfileServiceClient.UpdateProfile(ctx, req)

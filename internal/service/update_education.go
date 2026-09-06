@@ -2,11 +2,10 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
+	"time"
 	"uuid"
 
-	"github.com/jackc/pgx/v5"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
@@ -22,11 +21,13 @@ func (s *GatewayProfileService) UpdateEducation(
 	serviceName := "GatewayUpdateEducation"
 	userSession := utils.UserSessionContext(ctx)
 
-	id, err := updateEducation(
+	id, err := createUpdateEducation(
 		ctx,
+		req.GetId(),
 		userSession.UserID,
 		userSession.UserID,
 		req.GetEducation(),
+		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
 		serviceName,
@@ -49,11 +50,13 @@ func (s *RootProfileService) UpdateEducation(
 		return nil, userIDErr
 	}
 
-	id, err := updateEducation(
+	idx, err := createUpdateEducation(
 		ctx,
+		req.GetId(),
 		userID,
 		userSession.UserID,
 		req.GetEducation(),
+		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
 		serviceName,
@@ -61,53 +64,79 @@ func (s *RootProfileService) UpdateEducation(
 	if err != nil {
 		return nil, err
 	}
-	return &rootProfilev1.UpdateEducationResponse{Id: id.String()}, nil
+	return &rootProfilev1.UpdateEducationResponse{Id: idx.String()}, nil
 }
 
-func updateEducation(
+func createUpdateEducation(
 	ctx context.Context,
+	id string,
 	userID, updatedBy uuid.UUID,
-	req *profilev1.UpdateEducation,
+	req *profilev1.CreateUpdateEducation,
+	updatedAt time.Time,
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
 ) (uuid.UUID, error) {
-	id, idErr := parseUUID(ctx, req.GetId(), serviceName, logger)
-	if idErr != nil {
-		return id, idErr
+	if id == "" {
+		params := &repository.CreateEducationParams{
+			UserID:        userID,
+			School:        req.GetSchool(),
+			Degree:        req.GetDegree(),
+			Affiliation:   utils.StringValue(req.GetAffiliation()),
+			FieldOfStudy:  utils.StringValue(req.GetFieldOfStudy()),
+			Concentration: utils.StringValue(req.GetConcentration()),
+			StartDate:     req.GetStartDate().AsTime(),
+			EndDate:       utils.TimestampValue(req.GetEndDate()),
+			Address:       req.GetAddress(),
+			Description:   utils.StringValue(req.GetDescription()),
+			CreatedBy:     userID,
+			UpdatedBy:     userID,
+		}
+		idx, err := repo.CreateEducation(ctx, params)
+		if err != nil {
+			logger.ErrorContext(ctx, "Create Education Failed", "service", serviceName, "error", err)
+			return uuid.Nil(), errs.ErrInternalServer
+		}
+		return idx, nil
 	}
+
+	idx, updateIDErr := parseUUID(ctx, id, serviceName, logger)
+	if updateIDErr != nil {
+		return uuid.Nil(), updateIDErr
+	}
+
 	params := &repository.UpdateEducationParams{
 		School:        req.GetSchool(),
 		Degree:        req.GetDegree(),
-		Affiliation:   stringValue(req.GetAffiliation()),
-		FieldOfStudy:  stringValue(req.GetFieldOfStudy()),
-		Concentration: stringValue(req.GetConcentration()),
+		Affiliation:   utils.StringValue(req.GetAffiliation()),
+		FieldOfStudy:  utils.StringValue(req.GetFieldOfStudy()),
+		Concentration: utils.StringValue(req.GetConcentration()),
 		StartDate:     req.GetStartDate().AsTime(),
-		EndDate:       timestampValue(req.GetEndDate()),
+		EndDate:       utils.TimestampValue(req.GetEndDate()),
 		Address:       req.GetAddress(),
-		Description:   stringValue(req.GetDescription()),
+		Description:   utils.StringValue(req.GetDescription()),
 		UpdatedBy:     updatedBy,
-		ID:            id,
+		ID:            idx,
 		UserID:        userID,
-		UpdatedAt:     req.GetUpdatedAt().AsTime(),
+		UpdatedAt:     updatedAt,
 	}
-	eduID, err := repo.UpdateEducation(ctx, params)
+
+	cmdTag, err := repo.UpdateEducation(ctx, params)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			logger.WarnContext(
-				ctx,
-				"Concurrent education update detected",
-				"service",
-				serviceName,
-				"userID",
-				userID,
-				"id",
-				id.String(),
-			)
-			return uuid.Nil(), errs.ErrConflict
-		}
 		logger.ErrorContext(ctx, "Update Education Failed", "service", serviceName, "error", err)
 		return uuid.Nil(), errs.ErrInternalServer
 	}
-	return eduID, nil
+
+	if cmdTag.RowsAffected() == 0 {
+		logger.WarnContext(
+			ctx,
+			"Concurrent education update detected",
+			"service",
+			serviceName,
+			"userID", userID,
+			"id", id,
+		)
+		return uuid.Nil(), errs.ErrConflict
+	}
+	return idx, nil
 }

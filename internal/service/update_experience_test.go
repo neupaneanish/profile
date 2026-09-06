@@ -15,33 +15,23 @@ import (
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
-	"neupaneanish.com.np/profile/internal/service"
+	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func TestGatewayUpdateExperience(t *testing.T) {
 	t.Parallel()
 
-	t.Run("No Update Same Data", func(t *testing.T) {
+	t.Run("Same Data", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
-		experience := getExperience(t, userID)
-
-		params := &profilev1.UpdateExperience{
-			Id:           experience.ID.String(),
-			Title:        experience.Title,
-			CompanyName:  experience.CompanyName,
-			Location:     experience.Location,
-			LocationType: string(experience.LocationType),
-			StartDate:    timestamppb.New(experience.StartDate),
-			EndDate:      service.TimestamppbValue(experience.EndDate),
-			Description:  service.StringpbValue(experience.Description),
-			UpdatedAt:    timestamppb.New(experience.UpdatedAt),
-		}
+		id, params, updatedAt := updateExperience(t, userID, "")
 
 		res, err := gatewayProfileServiceClient.UpdateExperience(
 			ctx, &gatewayProfilev1.UpdateExperienceRequest{
+				Id:         id.String(),
 				Experience: params,
+				UpdatedAt:  timestamppb.New(updatedAt),
 			},
 		)
 		require.Error(t, err)
@@ -53,56 +43,37 @@ func TestGatewayUpdateExperience(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
-		experience := getExperience(t, userID)
-
-		params := &profilev1.UpdateExperience{
-			Id:           experience.ID.String(),
-			Title:        "Professor",
-			CompanyName:  experience.CompanyName,
-			Location:     experience.Location,
-			LocationType: string(experience.LocationType),
-			StartDate:    timestamppb.New(experience.StartDate),
-			EndDate:      service.TimestamppbValue(experience.EndDate),
-			Description:  service.StringpbValue(experience.Description),
-			UpdatedAt:    timestamppb.New(experience.UpdatedAt),
-		}
+		id, params, updatedAt := updateExperience(t, userID, "Test Title")
 
 		res, err := gatewayProfileServiceClient.UpdateExperience(
 			ctx, &gatewayProfilev1.UpdateExperienceRequest{
+				Id:         id.String(),
 				Experience: params,
+				UpdatedAt:  timestamppb.New(updatedAt),
 			},
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, experience.ID.String(), res.GetId())
+		assert.Equal(t, id.String(), res.GetId())
 	})
 }
 
 func TestRootUpdateExperience(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Invalid Updated At", func(t *testing.T) {
+	t.Run("Same Data", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
-		experience := getExperience(t, userID)
 
-		params := &profilev1.UpdateExperience{
-			Id:           experience.ID.String(),
-			Title:        experience.Title,
-			CompanyName:  experience.CompanyName,
-			Location:     experience.Location,
-			LocationType: string(experience.LocationType),
-			StartDate:    timestamppb.New(experience.StartDate),
-			EndDate:      service.TimestamppbValue(experience.EndDate),
-			Description:  service.StringpbValue(experience.Description),
-			UpdatedAt:    timestamppb.New(time.Now()),
-		}
+		id, params, updatedAt := updateExperience(t, userID, "")
 
 		res, err := rootProfileServiceClient.UpdateExperience(
 			ctx, &rootProfilev1.UpdateExperienceRequest{
+				Id:         id.String(),
 				UserId:     userID.String(),
 				Experience: params,
+				UpdatedAt:  timestamppb.New(updatedAt),
 			},
 		)
 		require.Error(t, err)
@@ -114,28 +85,45 @@ func TestRootUpdateExperience(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
-		experience := getExperience(t, userID)
 
-		params := &profilev1.UpdateExperience{
-			Id:           experience.ID.String(),
-			Title:        "Professor",
-			CompanyName:  experience.CompanyName,
-			Location:     experience.Location,
-			LocationType: string(experience.LocationType),
-			StartDate:    timestamppb.New(experience.StartDate),
-			EndDate:      service.TimestamppbValue(experience.EndDate),
-			Description:  service.StringpbValue(experience.Description),
-			UpdatedAt:    timestamppb.New(experience.UpdatedAt),
-		}
+		id, params, updatedAt := updateExperience(t, userID, "Test Title")
 
 		res, err := rootProfileServiceClient.UpdateExperience(
 			ctx, &rootProfilev1.UpdateExperienceRequest{
+				Id:         id.String(),
 				UserId:     userID.String(),
 				Experience: params,
+				UpdatedAt:  timestamppb.New(updatedAt),
 			},
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, experience.ID.String(), res.GetId())
+		assert.Equal(t, id.String(), res.GetId())
 	})
+}
+
+func updateExperience(
+	t *testing.T,
+	userID uuid.UUID,
+	title string,
+) (uuid.UUID, *profilev1.CreateUpdateExperience, time.Time) {
+	experience := getExperience(t, userID)
+
+	var value string
+
+	if title == "" {
+		value = experience.Title
+	} else {
+		value = title
+	}
+	params := &profilev1.CreateUpdateExperience{
+		Title:        value,
+		CompanyName:  experience.CompanyName,
+		Location:     experience.Location,
+		LocationType: string(experience.LocationType),
+		StartDate:    timestamppb.New(experience.StartDate),
+		EndDate:      utils.TimestamppbValue(experience.EndDate),
+		Description:  utils.StringpbValue(experience.Description),
+	}
+	return experience.ID, params, experience.UpdatedAt
 }

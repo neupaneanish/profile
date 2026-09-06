@@ -14,6 +14,7 @@ var (
 	ErrProfileAlreadyExists = status.Error(codes.AlreadyExists, "Profile already exists")
 	ErrNotFound             = status.Error(codes.NotFound, "Not found")
 	ErrInvalidUserID        = status.Error(codes.InvalidArgument, "Invalid UserID")
+	ErrInvalidURL           = status.Error(codes.InvalidArgument, "Invalid URL")
 	ErrConflict             = status.Error(
 		codes.FailedPrecondition,
 		"Something went wrong, please refresh and try again",

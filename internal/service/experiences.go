@@ -73,7 +73,7 @@ func experiences(
 			Title:       e.Title,
 			CompanyName: e.CompanyName,
 			StartDate:   timestamppb.New(e.StartDate),
-			EndDate:     TimestamppbValue(e.EndDate),
+			EndDate:     utils.TimestamppbValue(e.EndDate),
 		}
 	}
 	return res, nil

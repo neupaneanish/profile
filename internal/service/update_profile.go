@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
@@ -28,6 +29,7 @@ func (s *GatewayProfileService) UpdateProfile(
 		userSession.UserID,
 		userSession.UserID,
 		req.GetProfile(),
+		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
 		serviceName,
@@ -58,6 +60,7 @@ func (s *RootProfileService) UpdateProfile(
 		userID,
 		userSession.UserID,
 		req.GetProfile(),
+		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
 		serviceName,
@@ -74,7 +77,8 @@ func (s *RootProfileService) UpdateProfile(
 func updateProfile(
 	ctx context.Context,
 	userID, updatedBy uuid.UUID,
-	req *profilev1.UpdateProfile,
+	req *profilev1.CreateUpdateProfile,
+	updatedAt time.Time,
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
@@ -84,7 +88,7 @@ func updateProfile(
 		Title:     req.GetTitle(),
 		UpdatedBy: updatedBy,
 		UserID:    userID,
-		UpdatedAt: req.GetUpdatedAt().AsTime(),
+		UpdatedAt: updatedAt,
 	}
 
 	row, rowErr := repo.UpdateProfile(ctx, params)

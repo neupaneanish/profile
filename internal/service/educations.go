@@ -73,7 +73,7 @@ func educations(
 			School:    e.School,
 			Degree:    e.Degree,
 			StartDate: timestamppb.New(e.StartDate),
-			EndDate:   TimestamppbValue(e.EndDate),
+			EndDate:   utils.TimestamppbValue(e.EndDate),
 		}
 	}
 	return res, nil

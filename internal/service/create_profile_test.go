@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
+	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 )
 
@@ -22,9 +23,11 @@ func TestCreateProfile(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
 		req := &gatewayProfilev1.CreateProfileRequest{
-			Name:  "Anish Neupane",
-			Title: "Backend Developer",
-			Dob:   timestamppb.New(time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC)),
+			Profile: &profilev1.CreateUpdateProfile{
+				Name:  "Anish Neupane",
+				Title: "Backend Developer",
+			},
+			Dob: timestamppb.New(time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC)),
 		}
 
 		res, err := gatewayProfileServiceClient.CreateProfile(ctx, req)
@@ -40,9 +43,11 @@ func TestCreateProfile(t *testing.T) {
 
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 		req := &gatewayProfilev1.CreateProfileRequest{
-			Name:  "Anish Neupane",
-			Title: "Backend Developer",
-			Dob:   timestamppb.New(time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC)),
+			Profile: &profilev1.CreateUpdateProfile{
+				Name:  "Anish Neupane",
+				Title: "Backend Developer",
+			},
+			Dob: timestamppb.New(time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC)),
 		}
 
 		res, err := gatewayProfileServiceClient.CreateProfile(ctx, req)

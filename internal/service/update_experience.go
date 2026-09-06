@@ -2,11 +2,10 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
+	"time"
 	"uuid"
 
-	"github.com/jackc/pgx/v5"
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
@@ -23,14 +22,16 @@ func (s *GatewayProfileService) UpdateExperience(
 	serviceName := "GatewayUpdateExperience"
 	userSession := utils.UserSessionContext(ctx)
 
-	id, err := updateExperience(
+	id, err := createUpdateExperience(
 		ctx,
+		req.GetId(),
+		userSession.UserID,
+		userSession.UserID,
 		req.GetExperience(),
-		userSession.UserID,
-		userSession.UserID,
+		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
-		serviceName,
 		s.cfg.Logger,
+		serviceName,
 	)
 	if err != nil {
 		return nil, err
@@ -51,14 +52,16 @@ func (s *RootProfileService) UpdateExperience(
 		return nil, userIDErr
 	}
 
-	id, err := updateExperience(
+	id, err := createUpdateExperience(
 		ctx,
-		req.GetExperience(),
+		req.GetId(),
 		userID,
 		userSession.UserID,
+		req.GetExperience(),
+		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
-		serviceName,
 		s.cfg.Logger,
+		serviceName,
 	)
 	if err != nil {
 		return nil, err
@@ -67,17 +70,41 @@ func (s *RootProfileService) UpdateExperience(
 	return &rootProfilev1.UpdateExperienceResponse{Id: id.String()}, nil
 }
 
-func updateExperience(
+func createUpdateExperience(
 	ctx context.Context,
-	req *profilev1.UpdateExperience,
+	id string,
 	userID, updatedBy uuid.UUID,
+	req *profilev1.CreateUpdateExperience,
+	updatedAt time.Time,
 	repo repository.Querier,
-	serviceName string,
 	logger *slog.Logger,
+	serviceName string,
 ) (uuid.UUID, error) {
-	id, idErr := parseUUID(ctx, req.GetId(), serviceName, logger)
+	if id == "" {
+		params := &repository.CreateExperienceParams{
+			UserID:       userID,
+			Title:        req.GetTitle(),
+			CompanyName:  req.GetCompanyName(),
+			Location:     req.GetLocation(),
+			LocationType: enum.LocationType(req.GetLocationType()),
+			StartDate:    req.GetStartDate().AsTime(),
+			EndDate:      utils.TimestampValue(req.GetEndDate()),
+			Description:  utils.StringValue(req.GetDescription()),
+			CreatedBy:    userID,
+			UpdatedBy:    userID,
+		}
+
+		idx, err := repo.CreateExperience(ctx, params)
+		if err != nil {
+			logger.ErrorContext(ctx, "Create Experience Failed", "service", serviceName, "error", err)
+			return uuid.Nil(), errs.ErrInternalServer
+		}
+		return idx, nil
+	}
+
+	idx, idErr := parseUUID(ctx, id, serviceName, logger)
 	if idErr != nil {
-		return id, idErr
+		return uuid.Nil(), idErr
 	}
 
 	params := &repository.UpdateExperienceParams{
@@ -86,32 +113,30 @@ func updateExperience(
 		Location:     req.GetLocation(),
 		LocationType: enum.LocationType(req.GetLocationType()),
 		StartDate:    req.GetStartDate().AsTime(),
-		EndDate:      timestampValue(req.GetEndDate()),
-		Description:  stringValue(req.GetDescription()),
+		EndDate:      utils.TimestampValue(req.GetEndDate()),
+		Description:  utils.StringValue(req.GetDescription()),
 		UpdatedBy:    updatedBy,
-		ID:           id,
+		ID:           idx,
 		UserID:       userID,
-		UpdatedAt:    req.GetUpdatedAt().AsTime(),
+		UpdatedAt:    updatedAt,
 	}
 
-	idx, err := repo.UpdateExperience(ctx, params)
+	cmdTag, err := repo.UpdateExperience(ctx, params)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			logger.WarnContext(
-				ctx,
-				"Concurrent experience update detected",
-				"service",
-				serviceName,
-				"userID",
-				userID,
-				"id",
-				id.String(),
-			)
-			return uuid.Nil(), errs.ErrConflict
-		}
-		logger.ErrorContext(ctx, "Update Experience Failed", "service", serviceName, "error", err)
+		logger.ErrorContext(ctx, "Update Education Failed", "service", serviceName, "error", err)
 		return uuid.Nil(), errs.ErrInternalServer
 	}
 
+	if cmdTag.RowsAffected() == 0 {
+		logger.WarnContext(
+			ctx,
+			"Concurrent experience update detected",
+			"service",
+			serviceName,
+			"userID", userID,
+			"id", id,
+		)
+		return uuid.Nil(), errs.ErrConflict
+	}
 	return idx, nil
 }
