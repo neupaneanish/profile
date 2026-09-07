@@ -1,3 +1,4 @@
+//nolint:dupl //It has own logic
 package service
 
 import (
