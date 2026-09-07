@@ -71,7 +71,7 @@ func education(
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.WarnContext(ctx, "Education not found", "service", serviceName)
-			return nil, errs.ErrNotFound
+			return nil, errs.ErrNotFound("Education")
 		}
 		logger.ErrorContext(ctx, "Education query failed", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer

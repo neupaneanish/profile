@@ -25,7 +25,7 @@ func TestGatewayProfile(t *testing.T) {
 		res, err := gatewayProfileServiceClient.Profile(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound, err)
+		assert.Equal(t, errs.ErrNotFound("Profile"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -53,7 +53,7 @@ func TestRootProfile(t *testing.T) {
 		res, err := rootProfileServiceClient.Profile(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound, err)
+		assert.Equal(t, errs.ErrNotFound("Profile"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {

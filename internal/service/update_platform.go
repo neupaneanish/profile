@@ -2,11 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	"neupaneanish.com.np/profile/internal/errs"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -67,55 +63,4 @@ func (s *RootProfileService) UpdatePlatform(
 		return nil, errs.ErrConflict
 	}
 	return &rootProfilev1.UpdatePlatformResponse{Id: id.String()}, nil
-}
-
-func (s *RootProfileService) platformError(
-	ctx context.Context,
-	err error,
-	serviceName, name, url, logoURL, method string,
-) error {
-	if err != nil {
-		if pgxErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgxErr.Code == pgerrcode.UniqueViolation {
-			switch pgxErr.ConstraintName {
-			case utils.PlatformsNameKey:
-				s.cfg.Logger.WarnContext(
-					ctx,
-					"Name already exists",
-					"service",
-					serviceName,
-					"name",
-					name,
-				)
-				return errs.ErrPlatformNameExists
-			case utils.PlatformURLKey:
-				s.cfg.Logger.WarnContext(
-					ctx,
-					"URL already exists",
-					"service",
-					serviceName,
-					"url", url,
-				)
-				return errs.ErrPlatformURLExists
-			default:
-				s.cfg.Logger.WarnContext(
-					ctx,
-					"Logo URL already exists",
-					"service",
-					serviceName,
-					"logoURL", logoURL,
-				)
-				return errs.ErrPlatformLogoURLExists
-			}
-		}
-		s.cfg.Logger.ErrorContext(
-			ctx,
-			fmt.Sprintf("Failed to %s platform", method),
-			"service",
-			serviceName,
-			"error",
-			err,
-		)
-		return errs.ErrInternalServer
-	}
-	return nil
 }

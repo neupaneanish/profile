@@ -60,7 +60,7 @@ func profile(
 	if rowErr != nil {
 		if errors.Is(rowErr, pgx.ErrNoRows) {
 			logger.WarnContext(ctx, "Profile not found", "service", serviceName)
-			return nil, errs.ErrNotFound
+			return nil, errs.ErrNotFound("Profile")
 		}
 		logger.ErrorContext(ctx, "Profile query failed", "service", serviceName, "error", rowErr)
 		return nil, errs.ErrInternalServer
@@ -75,13 +75,4 @@ func profile(
 		UpdatedAt: timestamppb.New(row.UpdatedAt),
 		UpdatedBy: row.UpdatedBy.String(),
 	}, nil
-}
-
-func parseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.Logger) (uuid.UUID, error) {
-	userID, uuidErr := uuid.Parse(userIDStr)
-	if uuidErr != nil {
-		logger.WarnContext(ctx, "Failed to parse userID", "service", serviceName, "userID", userIDStr)
-		return uuid.Nil(), errs.ErrInvalidUserID
-	}
-	return userID, nil
 }

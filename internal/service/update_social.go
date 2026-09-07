@@ -2,14 +2,9 @@ package service
 
 import (
 	"context"
-	"log/slog"
-	"uuid"
 
-	"neupaneanish.com.np/profile/internal/errs"
-	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
-	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
 
@@ -60,43 +55,4 @@ func (s *RootProfileService) UpdateSocial(
 	}
 
 	return &rootProfilev1.UpdateSocialResponse{Id: req.GetSocial().GetId()}, nil
-}
-
-func updateSocial(
-	ctx context.Context,
-	userID uuid.UUID,
-	updatedBy uuid.UUID,
-	req *profilev1.UpdateSocial,
-	serviceName string,
-	repo repository.Querier,
-	logger *slog.Logger,
-) error {
-	idx, idxErr := parseUUID(ctx, req.GetId(), serviceName, logger)
-	if idxErr != nil {
-		return idxErr
-	}
-	params := &repository.UpdateSocialParams{
-		Username:  req.GetUsername(),
-		UpdatedBy: updatedBy,
-		ID:        idx,
-		UserID:    userID,
-		UpdatedAt: req.GetUpdatedAt().AsTime(),
-	}
-
-	cmdTag, err := repo.UpdateSocial(ctx, params)
-	if uErr := socialError(ctx, err, serviceName, "update", logger); uErr != nil {
-		return uErr
-	}
-
-	if cmdTag.RowsAffected() == 0 {
-		logger.WarnContext(
-			ctx,
-			"Social record not found or concurrent modification",
-			"service", serviceName,
-			"id", idx.String(),
-			"userID", userID.String(),
-		)
-		return errs.ErrConflict
-	}
-	return nil
 }

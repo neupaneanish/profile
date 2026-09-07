@@ -55,7 +55,7 @@ func TestCreateSocial(t *testing.T) {
 		res, err := gatewayProfileServiceClient.CreateSocial(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrSocialUniqueViolation, err)
+		assert.Equal(t, errs.ErrUniqueViolation("Social"), err)
 	})
 
 	t.Run("ForeignKeyViolation", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestCreateSocial(t *testing.T) {
 		res, err := gatewayProfileServiceClient.CreateSocial(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrSocialForeignKeyViolation, err)
+		assert.Equal(t, errs.ErrForeignKeyViolation("Platform"), err)
 	})
 }
 

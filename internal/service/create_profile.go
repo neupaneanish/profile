@@ -31,7 +31,7 @@ func (s *GatewayProfileService) CreateProfile(
 	if err := s.cfg.Repository.CreateProfile(ctx, params); err != nil {
 		if pgxErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgxErr.Code == pgerrcode.UniqueViolation {
 			s.cfg.Logger.WarnContext(ctx, "Profile already created", "service", serviceName)
-			return nil, errs.ErrProfileAlreadyExists
+			return nil, errs.ErrUniqueViolation("Profile")
 		}
 		s.cfg.Logger.ErrorContext(ctx, "Failed to insert profile", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer

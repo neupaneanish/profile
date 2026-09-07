@@ -1,10 +1,8 @@
-//nolint:dupl // Clean handler pattern intentionally mirrors Experience Delete
 package service
 
 import (
 	"context"
 
-	"neupaneanish.com.np/profile/internal/errs"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
@@ -29,20 +27,16 @@ func (s *GatewayProfileService) DeleteExperience(
 	}
 
 	cmdTag, err := s.cfg.Repository.DeleteExperience(ctx, params)
-	if err != nil {
-		s.cfg.Logger.ErrorContext(ctx, "Delete Experience Failed", "service", serviceName, "error", err)
-		return nil, errs.ErrInternalServer
-	}
-
-	if cmdTag.RowsAffected() == 0 {
-		s.cfg.Logger.WarnContext(
-			ctx,
-			"Experience record not found or concurrent modification",
-			"service", serviceName,
-			"id", id.String(),
-			"userID", userSession.UserID,
-		)
-		return nil, errs.ErrConflict
+	if deleteErr := deleteDB(
+		ctx,
+		cmdTag,
+		err,
+		serviceName,
+		"Experience",
+		req.GetId(),
+		s.cfg.Logger,
+	); deleteErr != nil {
+		return nil, deleteErr
 	}
 
 	return &gatewayProfilev1.DeleteExperienceResponse{}, nil

@@ -67,7 +67,7 @@ func TestCreatePlatform(t *testing.T) {
 		res, err := rootProfileServiceClient.CreatePlatform(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrPlatformNameExists, err)
+		assert.Equal(t, errs.ErrUniqueViolation("Platform"), err)
 	})
 
 	t.Run("Unique URL Error", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestCreatePlatform(t *testing.T) {
 		res, err := rootProfileServiceClient.CreatePlatform(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrPlatformURLExists, err)
+		assert.Equal(t, errs.ErrUniqueViolation("URL"), err)
 	})
 
 	t.Run("Unique Logo URL Error", func(t *testing.T) {
@@ -121,7 +121,7 @@ func TestCreatePlatform(t *testing.T) {
 		res, err := rootProfileServiceClient.CreatePlatform(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrPlatformLogoURLExists, err)
+		assert.Equal(t, errs.ErrUniqueViolation("Logo URL"), err)
 	})
 
 	t.Run("Invalid URL", func(t *testing.T) {

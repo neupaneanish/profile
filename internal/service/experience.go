@@ -71,7 +71,7 @@ func experience(
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.WarnContext(ctx, "Experience not found", "service", serviceName)
-			return nil, errs.ErrNotFound
+			return nil, errs.ErrNotFound("Experience")
 		}
 		logger.ErrorContext(ctx, "Experience query failed", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer

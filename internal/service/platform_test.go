@@ -40,6 +40,6 @@ func TestPlatform(t *testing.T) {
 		res, err := rootProfileServiceClient.Platform(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound, err)
+		assert.Equal(t, errs.ErrNotFound("Platform"), err)
 	})
 }

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"neupaneanish.com.np/profile/internal/errs"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
 )
@@ -22,19 +21,16 @@ func (s *RootProfileService) DeletePlatform(
 	params := &repository.DeletePlatformParams{ID: id, UpdatedAt: req.GetUpdatedAt().AsTime()}
 
 	cmdTag, err := s.cfg.Repository.DeletePlatform(ctx, params)
-	if err != nil {
-		s.cfg.Logger.ErrorContext(ctx, "Delete Platform Failed", "service", serviceName, "error", err)
-		return nil, errs.ErrInternalServer
-	}
-
-	if cmdTag.RowsAffected() == 0 {
-		s.cfg.Logger.WarnContext(
-			ctx,
-			"Platform record not found or concurrent modification",
-			"service", serviceName,
-			"id", id.String(),
-		)
-		return nil, errs.ErrConflict
+	if deleteErr := deleteDB(
+		ctx,
+		cmdTag,
+		err,
+		serviceName,
+		"Platform",
+		req.GetId(),
+		s.cfg.Logger,
+	); deleteErr != nil {
+		return nil, deleteErr
 	}
 
 	return &rootProfilev1.DeletePlatformResponse{}, nil

@@ -28,7 +28,7 @@ func (s *RootProfileService) Platform(
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.cfg.Logger.WarnContext(ctx, "Platform not found", "service", serviceName)
-			return nil, errs.ErrNotFound
+			return nil, errs.ErrNotFound("Platform")
 		}
 		s.cfg.Logger.ErrorContext(ctx, "Platform query failed", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer

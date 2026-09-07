@@ -129,6 +129,11 @@ func rootEndpoints() map[string]struct{} {
 		rootProfilev1.RootProfileService_UpdateAbout_FullMethodName: {},
 		// Domain
 		rootProfilev1.RootProfileService_Domains_FullMethodName: {},
+		// Nameserver
+		rootProfilev1.RootProfileService_CreateNameServer_FullMethodName: {},
+		rootProfilev1.RootProfileService_UpdateNameServer_FullMethodName: {},
+		rootProfilev1.RootProfileService_DeleteNameServer_FullMethodName: {},
+		rootProfilev1.RootProfileService_NameServers_FullMethodName:      {},
 		// Education
 		rootProfilev1.RootProfileService_UpdateEducation_FullMethodName: {},
 		rootProfilev1.RootProfileService_Education_FullMethodName:       {},

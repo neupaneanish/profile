@@ -26,7 +26,7 @@ func TestGatewayEducation(t *testing.T) {
 		res, err := gatewayProfileServiceClient.Education(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound, err)
+		assert.Equal(t, errs.ErrNotFound("Education"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRootEducation(t *testing.T) {
 		res, err := rootProfileServiceClient.Education(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound, err)
+		assert.Equal(t, errs.ErrNotFound("Education"), err)
 	})
 
 	t.Run("Success", func(t *testing.T) {

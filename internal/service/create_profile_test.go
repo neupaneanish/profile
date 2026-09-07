@@ -53,6 +53,6 @@ func TestCreateProfile(t *testing.T) {
 		res, err := gatewayProfileServiceClient.CreateProfile(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrProfileAlreadyExists, err)
+		assert.Equal(t, errs.ErrUniqueViolation("Profile"), err)
 	})
 }
