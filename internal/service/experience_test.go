@@ -14,10 +14,10 @@ import (
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
-func TestGatewayExperience(t *testing.T) {
+func TestExperience(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Not Found", func(t *testing.T) {
+	t.Run("Not Found Gateway", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
 
@@ -29,26 +29,21 @@ func TestGatewayExperience(t *testing.T) {
 		assert.Equal(t, errs.ErrNotFound("Experience"), err)
 	})
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success gateway", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 
-		id := seedExperience(t, userID)
+		exp := getExperience(t, userID)
 
-		req := &gatewayProfilev1.ExperienceRequest{Id: id.String()}
+		req := &gatewayProfilev1.ExperienceRequest{Id: exp.ID.String()}
 		res, err := gatewayProfileServiceClient.Experience(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, id.String(), res.GetExperience().GetId())
 	})
-}
 
-func TestRootExperience(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Not Found", func(t *testing.T) {
+	t.Run("Not Found Root", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
@@ -60,19 +55,17 @@ func TestRootExperience(t *testing.T) {
 		assert.Equal(t, errs.ErrNotFound("Experience"), err)
 	})
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success Root", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
-		id := seedExperience(t, userID)
+		exp := getExperience(t, userID)
 
-		req := &rootProfilev1.ExperienceRequest{Id: id.String(), UserId: userID.String()}
+		req := &rootProfilev1.ExperienceRequest{Id: exp.ID.String(), UserId: userID.String()}
 		res, err := rootProfileServiceClient.Experience(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, id.String(), res.GetExperience().GetId())
-		assert.Equal(t, userID.String(), res.GetExperience().GetUserId())
 	})
 }

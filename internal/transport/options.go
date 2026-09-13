@@ -88,6 +88,7 @@ func gatewayEndpoints() map[string]struct{} {
 		gatewayProfilev1.GatewayProfileService_Profile_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_CreateProfile_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_UpdateProfile_FullMethodName: {},
+		gatewayProfilev1.GatewayProfileService_CheckProfile_FullMethodName:  {},
 		// About
 		gatewayProfilev1.GatewayProfileService_About_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_CreateAbout_FullMethodName: {},
@@ -109,9 +110,8 @@ func gatewayEndpoints() map[string]struct{} {
 		gatewayProfilev1.GatewayProfileService_DeleteExperience_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_Experience_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_Experiences_FullMethodName:      {},
-		// Platform
-		gatewayProfilev1.GatewayProfileService_Platforms_FullMethodName: {},
 		// Social
+		gatewayProfilev1.GatewayProfileService_SocialIcons_FullMethodName:  {},
 		gatewayProfilev1.GatewayProfileService_CreateSocial_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_UpdateSocial_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_DeleteSocial_FullMethodName: {},
@@ -130,10 +130,9 @@ func rootEndpoints() map[string]struct{} {
 		// Domain
 		rootProfilev1.RootProfileService_Domains_FullMethodName: {},
 		// Nameserver
-		rootProfilev1.RootProfileService_CreateNameServer_FullMethodName: {},
-		rootProfilev1.RootProfileService_UpdateNameServer_FullMethodName: {},
-		rootProfilev1.RootProfileService_DeleteNameServer_FullMethodName: {},
-		rootProfilev1.RootProfileService_NameServers_FullMethodName:      {},
+		rootProfilev1.RootProfileService_CreateNameserver_FullMethodName: {},
+		rootProfilev1.RootProfileService_DeleteNameserver_FullMethodName: {},
+		rootProfilev1.RootProfileService_Nameservers_FullMethodName:      {},
 		// Education
 		rootProfilev1.RootProfileService_UpdateEducation_FullMethodName: {},
 		rootProfilev1.RootProfileService_Education_FullMethodName:       {},
@@ -142,12 +141,12 @@ func rootEndpoints() map[string]struct{} {
 		rootProfilev1.RootProfileService_UpdateExperience_FullMethodName: {},
 		rootProfilev1.RootProfileService_Experience_FullMethodName:       {},
 		rootProfilev1.RootProfileService_Experiences_FullMethodName:      {},
-		// Platform
-		rootProfilev1.RootProfileService_Platforms_FullMethodName:      {},
-		rootProfilev1.RootProfileService_Platform_FullMethodName:       {},
-		rootProfilev1.RootProfileService_CreatePlatform_FullMethodName: {},
-		rootProfilev1.RootProfileService_UpdatePlatform_FullMethodName: {},
-		rootProfilev1.RootProfileService_DeletePlatform_FullMethodName: {},
+		// Icon
+		rootProfilev1.RootProfileService_Icons_FullMethodName:      {},
+		rootProfilev1.RootProfileService_Icon_FullMethodName:       {},
+		rootProfilev1.RootProfileService_CreateIcon_FullMethodName: {},
+		rootProfilev1.RootProfileService_UpdateIcon_FullMethodName: {},
+		rootProfilev1.RootProfileService_DeleteIcon_FullMethodName: {},
 		// Social
 		rootProfilev1.RootProfileService_UpdateSocial_FullMethodName: {},
 		rootProfilev1.RootProfileService_Socials_FullMethodName:      {},

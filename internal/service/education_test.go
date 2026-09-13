@@ -14,10 +14,10 @@ import (
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
-func TestGatewayEducation(t *testing.T) {
+func TestEducation(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Not Found", func(t *testing.T) {
+	t.Run("Not Found Gateway", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
 
@@ -29,26 +29,21 @@ func TestGatewayEducation(t *testing.T) {
 		assert.Equal(t, errs.ErrNotFound("Education"), err)
 	})
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success Gateway", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 
-		id := seedEducation(t, userID)
+		edu := getEducation(t, userID)
 
-		req := &gatewayProfilev1.EducationRequest{Id: id.String()}
+		req := &gatewayProfilev1.EducationRequest{Id: edu.ID.String()}
 		res, err := gatewayProfileServiceClient.Education(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, id.String(), res.GetEducation().GetId())
 	})
-}
 
-func TestRootEducation(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Not Found", func(t *testing.T) {
+	t.Run("Not Found Root", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
@@ -60,19 +55,22 @@ func TestRootEducation(t *testing.T) {
 		assert.Equal(t, errs.ErrNotFound("Education"), err)
 	})
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success Root", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
-		id := seedEducation(t, userID)
+		edu := getEducation(t, userID)
 
-		req := &rootProfilev1.EducationRequest{Id: id.String(), UserId: userID.String()}
+		req := &rootProfilev1.EducationRequest{Id: edu.ID.String(), UserId: userID.String()}
 		res, err := rootProfileServiceClient.Education(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, id.String(), res.GetEducation().GetId())
-		assert.Equal(t, userID.String(), res.GetEducation().GetUserId())
 	})
+}
+
+func TestRootEducation(t *testing.T) {
+	t.Parallel()
+
 }

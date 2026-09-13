@@ -1,4 +1,3 @@
-//nolint:dupl // Clean handler pattern intentionally mirrors Educations
 package service
 
 import (

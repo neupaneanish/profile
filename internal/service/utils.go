@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"slices"
 	"time"
 	"uuid"
 
@@ -29,63 +31,6 @@ func parseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.
 	return userID, nil
 }
 
-func (s *RootProfileService) nameServerError(ctx context.Context, err error, serviceName, method string) error {
-	if err != nil {
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == pgerrcode.UniqueViolation {
-			s.cfg.Logger.WarnContext(
-				ctx,
-				"NameServer Already Exists",
-				"service", serviceName,
-			)
-			return errs.ErrUniqueViolation("Nameserver")
-		}
-		s.cfg.Logger.ErrorContext(
-			ctx,
-			fmt.Sprintf("Failed to %s name server", method),
-			"service", serviceName,
-			"error", err,
-		)
-		return errs.ErrInternalServer
-	}
-	return nil
-}
-
-func (s *RootProfileService) platformURLs(
-	ctx context.Context,
-	url, logoURL, serviceName string,
-) (string, string, error) {
-	pURL, urlErr := utils.ValidateURL(url)
-	if urlErr != nil {
-		s.cfg.Logger.WarnContext(
-			ctx,
-			"Invalid URL",
-			"service",
-			serviceName,
-			"error",
-			urlErr,
-			"url",
-			url,
-		)
-		return "", "", errs.ErrInvalidURL
-	}
-
-	pLogoURL, logoURLErr := utils.ValidateURL(logoURL)
-	if logoURLErr != nil {
-		s.cfg.Logger.ErrorContext(
-			ctx,
-			"Invalid Logo URL",
-			"service",
-			serviceName,
-			"error",
-			logoURLErr,
-			"logoURL",
-			logoURL,
-		)
-		return "", "", errs.ErrInvalidURL
-	}
-	return "https://" + pURL, "https://" + pLogoURL, nil
-}
-
 func socialError(
 	ctx context.Context,
 	err error,
@@ -106,11 +51,11 @@ func socialError(
 			case pgerrcode.ForeignKeyViolation:
 				logger.ErrorContext(
 					ctx,
-					"Platform does not exists",
+					"Icon does not exists",
 					"service",
 					serviceName,
 				)
-				return errs.ErrForeignKeyViolation("Platform")
+				return errs.ErrForeignKeyViolation("Icon")
 			}
 		}
 		logger.ErrorContext(
@@ -129,7 +74,7 @@ func socialError(
 
 func deleteDB(
 	ctx context.Context,
-	cmdTag pgconn.CommandTag,
+	affected int64,
 	err error,
 	serviceName, table, id string,
 	logger *slog.Logger,
@@ -139,7 +84,7 @@ func deleteDB(
 		return errs.ErrInternalServer
 	}
 
-	if cmdTag.RowsAffected() == 0 {
+	if affected != 1 {
 		logger.WarnContext(
 			ctx,
 			fmt.Sprintf("%s record not found or concurrent modification", table),
@@ -160,58 +105,67 @@ func createUpdateEducation(
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
-) (uuid.UUID, error) {
+) error {
+	school := req.GetSchool()
+	degree := req.GetDegree()
+	affiliation := utils.StringValue(req.GetAffiliation())
+	fieldOfStudy := utils.StringValue(req.GetFieldOfStudy())
+	concentration := utils.StringValue(req.GetConcentration())
+	startDate := req.GetStartDate().AsTime()
+	endDate := utils.TimestampValue(req.GetEndDate())
+	address := req.GetAddress()
+	description := utils.StringValue(req.GetDescription())
+
 	if id == "" {
 		params := &repository.CreateEducationParams{
 			UserID:        userID,
-			School:        req.GetSchool(),
-			Degree:        req.GetDegree(),
-			Affiliation:   utils.StringValue(req.GetAffiliation()),
-			FieldOfStudy:  utils.StringValue(req.GetFieldOfStudy()),
-			Concentration: utils.StringValue(req.GetConcentration()),
-			StartDate:     req.GetStartDate().AsTime(),
-			EndDate:       utils.TimestampValue(req.GetEndDate()),
-			Address:       req.GetAddress(),
-			Description:   utils.StringValue(req.GetDescription()),
+			School:        school,
+			Degree:        degree,
+			Affiliation:   affiliation,
+			FieldOfStudy:  fieldOfStudy,
+			Concentration: concentration,
+			StartDate:     startDate,
+			EndDate:       endDate,
+			Address:       address,
+			Description:   description,
 			CreatedBy:     userID,
 			UpdatedBy:     userID,
 		}
-		idx, err := repo.CreateEducation(ctx, params)
-		if err != nil {
+		if _, err := repo.CreateEducation(ctx, params); err != nil {
 			logger.ErrorContext(ctx, "Create Education Failed", "service", serviceName, "error", err)
-			return uuid.Nil(), errs.ErrInternalServer
+			return errs.ErrInternalServer
 		}
-		return idx, nil
+		return nil
 	}
 
 	idx, updateIDErr := parseUUID(ctx, id, serviceName, logger)
 	if updateIDErr != nil {
-		return uuid.Nil(), updateIDErr
+		return updateIDErr
 	}
 
 	params := &repository.UpdateEducationParams{
-		School:        req.GetSchool(),
-		Degree:        req.GetDegree(),
-		Affiliation:   utils.StringValue(req.GetAffiliation()),
-		FieldOfStudy:  utils.StringValue(req.GetFieldOfStudy()),
-		Concentration: utils.StringValue(req.GetConcentration()),
-		StartDate:     req.GetStartDate().AsTime(),
-		EndDate:       utils.TimestampValue(req.GetEndDate()),
-		Address:       req.GetAddress(),
-		Description:   utils.StringValue(req.GetDescription()),
+		School:        school,
+		Degree:        degree,
+		Affiliation:   affiliation,
+		FieldOfStudy:  fieldOfStudy,
+		Concentration: concentration,
+		StartDate:     startDate,
+		EndDate:       endDate,
+		Address:       address,
+		Description:   description,
 		UpdatedBy:     updatedBy,
 		ID:            idx,
 		UserID:        userID,
 		UpdatedAt:     updatedAt,
 	}
 
-	cmdTag, err := repo.UpdateEducation(ctx, params)
+	affected, err := repo.UpdateEducation(ctx, params)
 	if err != nil {
 		logger.ErrorContext(ctx, "Update Education Failed", "service", serviceName, "error", err)
-		return uuid.Nil(), errs.ErrInternalServer
+		return errs.ErrInternalServer
 	}
 
-	if cmdTag.RowsAffected() == 0 {
+	if affected != 1 {
 		logger.WarnContext(
 			ctx,
 			"Concurrent education update detected",
@@ -220,9 +174,9 @@ func createUpdateEducation(
 			"userID", userID,
 			"id", id,
 		)
-		return uuid.Nil(), errs.ErrConflict
+		return errs.ErrConflict
 	}
-	return idx, nil
+	return nil
 }
 
 func createUpdateExperience(
@@ -234,55 +188,62 @@ func createUpdateExperience(
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
-) (uuid.UUID, error) {
+) error {
+	title := req.GetTitle()
+	companyName := req.GetCompanyName()
+	location := req.GetLocation()
+	locationType := enum.LocationType(req.GetLocationType())
+	startDate := req.GetStartDate().AsTime()
+	endDate := utils.TimestampValue(req.GetEndDate())
+	description := utils.StringValue(req.GetDescription())
+
 	if id == "" {
 		params := &repository.CreateExperienceParams{
 			UserID:       userID,
-			Title:        req.GetTitle(),
-			CompanyName:  req.GetCompanyName(),
-			Location:     req.GetLocation(),
-			LocationType: enum.LocationType(req.GetLocationType()),
-			StartDate:    req.GetStartDate().AsTime(),
-			EndDate:      utils.TimestampValue(req.GetEndDate()),
-			Description:  utils.StringValue(req.GetDescription()),
+			Title:        title,
+			CompanyName:  companyName,
+			Location:     location,
+			LocationType: locationType,
+			StartDate:    startDate,
+			EndDate:      endDate,
+			Description:  description,
 			CreatedBy:    userID,
 			UpdatedBy:    userID,
 		}
 
-		idx, err := repo.CreateExperience(ctx, params)
-		if err != nil {
+		if _, err := repo.CreateExperience(ctx, params); err != nil {
 			logger.ErrorContext(ctx, "Create Experience Failed", "service", serviceName, "error", err)
-			return uuid.Nil(), errs.ErrInternalServer
+			return errs.ErrInternalServer
 		}
-		return idx, nil
+		return nil
 	}
 
 	idx, idErr := parseUUID(ctx, id, serviceName, logger)
 	if idErr != nil {
-		return uuid.Nil(), idErr
+		return idErr
 	}
 
 	params := &repository.UpdateExperienceParams{
-		Title:        req.GetTitle(),
-		CompanyName:  req.GetCompanyName(),
-		Location:     req.GetLocation(),
-		LocationType: enum.LocationType(req.GetLocationType()),
-		StartDate:    req.GetStartDate().AsTime(),
-		EndDate:      utils.TimestampValue(req.GetEndDate()),
-		Description:  utils.StringValue(req.GetDescription()),
+		Title:        title,
+		CompanyName:  companyName,
+		Location:     location,
+		LocationType: locationType,
+		StartDate:    startDate,
+		EndDate:      endDate,
+		Description:  description,
 		UpdatedBy:    updatedBy,
 		ID:           idx,
 		UserID:       userID,
 		UpdatedAt:    updatedAt,
 	}
 
-	cmdTag, err := repo.UpdateExperience(ctx, params)
+	affected, err := repo.UpdateExperience(ctx, params)
 	if err != nil {
 		logger.ErrorContext(ctx, "Update Education Failed", "service", serviceName, "error", err)
-		return uuid.Nil(), errs.ErrInternalServer
+		return errs.ErrInternalServer
 	}
 
-	if cmdTag.RowsAffected() == 0 {
+	if affected != 1 {
 		logger.WarnContext(
 			ctx,
 			"Concurrent experience update detected",
@@ -291,123 +252,7 @@ func createUpdateExperience(
 			"userID", userID,
 			"id", id,
 		)
-		return uuid.Nil(), errs.ErrConflict
-	}
-	return idx, nil
-}
-
-func (s *RootProfileService) createUpdateNameServer(
-	ctx context.Context,
-	id string,
-	req *rootProfilev1.CreateUpdateNameServer,
-	updatedBy uuid.UUID,
-	serviceName string,
-	active bool,
-	updatedAt time.Time,
-) (uuid.UUID, error) {
-	domain, domainErr := utils.ValidateURL(req.GetDomain())
-	if domainErr != nil {
-		s.cfg.Logger.ErrorContext(ctx, "Invalid Domain", "service", serviceName, "error", domainErr)
-		return uuid.Nil(), errs.ErrInvalidURL
-	}
-
-	cname := req.GetCname()
-
-	if id == "" {
-		params := &repository.CreateNameServerParams{
-			Domain:    domain,
-			Cname:     cname,
-			CreatedBy: updatedBy,
-			UpdatedBy: updatedBy,
-		}
-
-		idx, err := s.cfg.Repository.CreateNameServer(ctx, params)
-
-		if nsErr := s.nameServerError(ctx, err, serviceName, "create"); nsErr != nil {
-			return uuid.Nil(), nsErr
-		}
-
-		return idx, nil
-	}
-
-	idx, idxErr := parseUUID(ctx, id, serviceName, s.cfg.Logger)
-	if idxErr != nil {
-		return idx, idxErr
-	}
-
-	params := &repository.UpdateNameServerParams{
-		Domain:    domain,
-		Cname:     cname,
-		Active:    active,
-		ID:        idx,
-		UpdatedAt: updatedAt,
-	}
-
-	cmdTag, err := s.cfg.Repository.UpdateNameServer(ctx, params)
-	if nsErr := s.nameServerError(ctx, err, serviceName, "update"); nsErr != nil {
-		return uuid.Nil(), nsErr
-	}
-
-	if cmdTag.RowsAffected() == 0 {
-		s.cfg.Logger.WarnContext(
-			ctx,
-			"Concurrent nameserver update detected",
-			"service",
-			serviceName,
-			"id", id,
-		)
-		return uuid.Nil(), errs.ErrConflict
-	}
-	return idx, nil
-}
-
-func (s *RootProfileService) platformError(
-	ctx context.Context,
-	err error,
-	serviceName, name, url, logoURL, method string,
-) error {
-	if err != nil {
-		if pgxErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgxErr.Code == pgerrcode.UniqueViolation {
-			switch pgxErr.ConstraintName {
-			case utils.PlatformsNameKey:
-				s.cfg.Logger.WarnContext(
-					ctx,
-					"Name already exists",
-					"service",
-					serviceName,
-					"name",
-					name,
-				)
-				return errs.ErrUniqueViolation("Platform")
-			case utils.PlatformURLKey:
-				s.cfg.Logger.WarnContext(
-					ctx,
-					"URL already exists",
-					"service",
-					serviceName,
-					"url", url,
-				)
-				return errs.ErrUniqueViolation("URL")
-			default:
-				s.cfg.Logger.WarnContext(
-					ctx,
-					"Logo URL already exists",
-					"service",
-					serviceName,
-					"logoURL", logoURL,
-				)
-				return errs.ErrUniqueViolation("Logo URL")
-			}
-		}
-		s.cfg.Logger.ErrorContext(
-			ctx,
-			fmt.Sprintf("Failed to %s platform", method),
-			"service",
-			serviceName,
-			"error",
-			err,
-		)
-		return errs.ErrInternalServer
+		return errs.ErrConflict
 	}
 	return nil
 }
@@ -471,12 +316,12 @@ func updateSocial(
 		UpdatedAt: req.GetUpdatedAt().AsTime(),
 	}
 
-	cmdTag, err := repo.UpdateSocial(ctx, params)
+	affected, err := repo.UpdateSocial(ctx, params)
 	if uErr := socialError(ctx, err, serviceName, "update", logger); uErr != nil {
 		return uErr
 	}
 
-	if cmdTag.RowsAffected() == 0 {
+	if affected != 1 {
 		logger.WarnContext(
 			ctx,
 			"Social record not found or concurrent modification",
@@ -487,4 +332,199 @@ func updateSocial(
 		return errs.ErrConflict
 	}
 	return nil
+}
+
+func (s *RootProfileService) createUpdateIcon(
+	ctx context.Context,
+	id string,
+	req *rootProfilev1.CreateUpdateIcon,
+	serviceName string,
+	updatedAt time.Time,
+) error {
+	userSession := utils.UserSessionContext(ctx)
+
+	name := req.GetName()
+
+	site := req.GetSite()
+	siteErr := utils.ValidateURL(site, false)
+	if siteErr != nil {
+		s.cfg.Logger.WarnContext(ctx, "Invalid Site", "service", serviceName, "error", siteErr)
+		return errs.ErrInvalidURL
+	}
+
+	siteSuffix := utils.StringValue(req.GetSiteSuffix())
+
+	url := req.GetUrl()
+	urlErr := utils.ValidateURL(url, true)
+	if urlErr != nil {
+		s.cfg.Logger.WarnContext(ctx, "Invalid URL", "service", serviceName, "error", urlErr)
+		return errs.ErrInvalidURL
+	}
+
+	slug := req.GetSlug()
+
+	color := req.GetColor()
+
+	if id == "" {
+		params := &repository.CreateIconParams{
+			Name:       name,
+			Site:       site,
+			SiteSuffix: siteSuffix,
+			Url:        url,
+			Slug:       slug,
+			Color:      color,
+			CreatedBy:  userSession.UserID,
+			UpdatedBy:  userSession.UserID,
+		}
+
+		if _, err := s.cfg.Repository.CreateIcon(ctx, params); err != nil {
+			if icErr := s.iconError(ctx, err, serviceName, "create"); icErr != nil {
+				return icErr
+			}
+		}
+		return nil
+	}
+
+	idx, idxErr := parseUUID(ctx, id, serviceName, s.cfg.Logger)
+	if idxErr != nil {
+		return idxErr
+	}
+
+	params := &repository.UpdateIconParams{
+		Name:       name,
+		Site:       site,
+		SiteSuffix: siteSuffix,
+		Url:        url,
+		Slug:       slug,
+		Color:      color,
+		ID:         idx,
+		UpdatedAt:  updatedAt,
+	}
+
+	affected, err := s.cfg.Repository.UpdateIcon(ctx, params)
+	if icErr := s.iconError(ctx, err, serviceName, "update"); icErr != nil {
+		return icErr
+	}
+
+	if affected != 1 {
+		s.cfg.Logger.WarnContext(
+			ctx,
+			"Record not found or concurrent modification or already verified",
+			"service", serviceName,
+			"id", id,
+		)
+		return errs.ErrConflict
+	}
+
+	return nil
+}
+
+func (s *RootProfileService) iconError(
+	ctx context.Context,
+	err error,
+	serviceName,
+	method string,
+) error {
+	if err != nil {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == pgerrcode.UniqueViolation {
+			switch pgErr.ConstraintName {
+			case utils.IconUniqueViolationSiteSuffix:
+				s.cfg.Logger.WarnContext(
+					ctx,
+					"Icon Site with suffix already exists",
+					"service",
+					serviceName,
+				)
+				return errs.ErrUniqueViolation("Icon Site with suffix")
+			case utils.IconUniqueViolationSiteNoSuffix:
+				s.cfg.Logger.WarnContext(
+					ctx,
+					"Icon Site already exists",
+					"service",
+					serviceName,
+				)
+				return errs.ErrUniqueViolation("Icon Site")
+			case utils.IconUniqueViolationURLSlug:
+				s.cfg.Logger.WarnContext(
+					ctx,
+					"Icon URL already exists",
+					"service",
+					serviceName,
+				)
+				return errs.ErrUniqueViolation("Icon URL")
+			default:
+				s.cfg.Logger.WarnContext(
+					ctx,
+					"Icon Name already exists",
+					"service",
+					serviceName,
+				)
+				return errs.ErrUniqueViolation("Icon Name")
+			}
+		}
+		s.cfg.Logger.WarnContext(
+			ctx,
+			fmt.Sprintf("Failed to %s icon", method),
+			"service",
+			serviceName,
+		)
+		return errs.ErrInternalServer
+	}
+	return nil
+}
+
+func (s *GatewayProfileService) validateDomain(ctx context.Context, fqdn, txt, ipAdd, serviceName string) error {
+	lookupCtx, cancel := context.WithTimeout(ctx, lookupTimeout)
+	defer cancel()
+
+	txtRecords, txtRecordsErr := s.cfg.Resolver.LookupTXT(lookupCtx, fqdn)
+	if txtRecordsErr != nil || len(txtRecords) == 0 {
+		s.cfg.Logger.WarnContext(
+			ctx,
+			"domain verification failed: host unreachable or no public TXT records found",
+			"service",
+			serviceName,
+			"err",
+			txtRecordsErr,
+		)
+		return errs.ErrNotFound("TXT")
+	}
+
+	if !slices.Contains(txtRecords, txt) {
+		s.cfg.Logger.WarnContext(
+			ctx,
+			"domain ownership verification failed: matching token not found in TXT pool",
+			"service", serviceName,
+			"domain", fqdn,
+			"err", txtRecordsErr,
+		)
+		return errs.ErrNotFound("TXT")
+	}
+
+	hostIps, hostIpsErr := s.cfg.Resolver.LookupIP(lookupCtx, "ip", fqdn)
+	if hostIpsErr != nil || len(hostIps) == 0 {
+		s.cfg.Logger.WarnContext(
+			ctx,
+			"domain routing verification failed: host unresolved",
+			"service", serviceName,
+			"fqdn", fqdn,
+			"err", hostIpsErr,
+		)
+		return errs.ErrNotFound("IP")
+	}
+
+	for _, ip := range hostIps {
+		if ip.Equal(net.IP(ipAdd)) {
+			return nil
+		}
+	}
+	s.cfg.Logger.WarnContext(
+		ctx,
+		"User domain does not point to our platform IP structure",
+		"service", serviceName,
+		"fqdn", fqdn,
+		"expected_platform_ip", ipAdd,
+		"user_resolved_ips", hostIps,
+	)
+	return errs.ErrNotFound("IP")
 }

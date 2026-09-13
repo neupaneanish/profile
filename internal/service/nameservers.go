@@ -8,26 +8,25 @@ import (
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
-func (s *RootProfileService) NameServers(
+func (s *RootProfileService) Nameservers(
 	ctx context.Context,
-	_ *profilev1.NameServersRequest,
-) (*profilev1.NameServersResponse, error) {
+	_ *profilev1.NameserversRequest,
+) (*profilev1.NameserversResponse, error) {
 	serviceName := "Nameservers"
 
-	rows, err := s.cfg.Repository.NameServers(ctx)
+	rows, err := s.cfg.Repository.Nameservers(ctx)
 	if err != nil {
 		s.cfg.Logger.ErrorContext(ctx, "Failed to fetch nameservers", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
 
-	res := make([]*profilev1.NameServers, len(rows))
+	res := make([]*profilev1.Nameservers, len(rows))
 
 	for i, n := range rows {
-		res[i] = &profilev1.NameServers{
+		res[i] = &profilev1.Nameservers{
 			Id:        n.ID.String(),
-			Cname:     n.Cname,
-			Domain:    n.Domain,
-			Active:    n.Active,
+			Ip:        n.Ip,
+			IpType:    n.IpType,
 			CreatedAt: timestamppb.New(n.CreatedAt),
 			CreatedBy: n.CreatedBy.String(),
 			UpdatedAt: timestamppb.New(n.UpdatedAt),
@@ -35,5 +34,5 @@ func (s *RootProfileService) NameServers(
 		}
 	}
 
-	return &profilev1.NameServersResponse{Nameservers: res}, nil
+	return &profilev1.NameserversResponse{Nameservers: res}, nil
 }

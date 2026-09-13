@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"log/slog"
+	"net"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/valkey-io/valkey-go"
@@ -14,6 +15,7 @@ type Config struct {
 	Client     valkey.Client
 	Repository repository.Querier
 	Logger     *slog.Logger
+	Resolver   *net.Resolver
 }
 
 func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, error) {
@@ -32,6 +34,7 @@ func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, err
 		Client:     client,
 		Repository: repository.New(pool),
 		Logger:     logger,
+		Resolver:   net.DefaultResolver,
 	}, nil
 }
 

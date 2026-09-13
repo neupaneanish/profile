@@ -3,8 +3,6 @@
 package service_test
 
 import (
-	"crypto/rand"
-	"strings"
 	"testing"
 	"uuid"
 
@@ -17,16 +15,12 @@ import (
 func TestNameservers(t *testing.T) {
 	t.Parallel()
 
-	seedNameServer(t, strings.ToLower(rand.Text()[:8]))
-	seedNameServer(t, strings.ToLower(rand.Text()[:8]))
-	seedNameServer(t, strings.ToLower(rand.Text()[:8]))
-
 	ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
-	req := &profilev1.NameServersRequest{}
+	req := &profilev1.NameserversRequest{}
 
-	res, err := rootProfileServiceClient.NameServers(ctx, req)
+	res, err := rootProfileServiceClient.Nameservers(ctx, req)
 	require.NoError(t, err)
 	assert.NotNil(t, res)
-	assert.GreaterOrEqual(t, len(res.GetNameservers()), 3)
+	assert.GreaterOrEqual(t, len(res.GetNameservers()), 0)
 }

@@ -3,12 +3,11 @@ package utils
 import (
 	"context"
 	"errors"
-	"net"
-	"net/url"
-	"strings"
+	"net/netip"
 	"time"
 	"uuid"
 
+	"golang.org/x/net/publicsuffix"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -57,36 +56,42 @@ func StringpbValue(s *string) *wrapperspb.StringValue {
 }
 
 const (
-	PlatformsNameKey = "platforms_name_key"
-	PlatformURLKey   = "platforms_url_key"
+	IconUniqueViolationSiteSuffix   = "unique_icons_site_with_suffix"
+	IconUniqueViolationSiteNoSuffix = "unique_icons_site_no_suffix"
+	IconUniqueViolationURLSlug      = "unique_url_slug"
 )
 
-func ValidateURL(domain string) (string, error) {
-	input := strings.ToLower(domain)
-
-	parsed, parsedErr := url.Parse(input)
-	if parsedErr != nil {
-		return "", errors.New("malformed domain format string")
+func ValidateURL(domain string, subDomain bool) error {
+	eTLD, icann := publicsuffix.PublicSuffix(domain)
+	if !icann || eTLD == domain {
+		return errors.New("invalid public suffix")
 	}
 
-	host := parsed.Host
-
-	hostname, _, err := net.SplitHostPort(host)
+	eTLDPlusOne, err := publicsuffix.EffectiveTLDPlusOne(domain)
 	if err != nil {
-		hostname = parsed.Hostname()
+		return err
 	}
 
-	if hostname == "" {
-		return "", errors.New("invalid or empty hostname in URL")
+	if subDomain {
+		return nil
 	}
 
-	if hostname == "localhost" || strings.HasSuffix(hostname, ".local") || strings.HasSuffix(hostname, ".localhost") {
-		return "", errors.New("localhost is not allowed")
+	if domain != eTLDPlusOne {
+		return errors.New("subdomains not allowed")
 	}
 
-	if ip := net.ParseIP(hostname); ip != nil {
-		return "", errors.New("IP addresses are not allowed")
+	return nil
+}
+
+func ValidateIP(ip string) error {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return err
 	}
 
-	return hostname, nil
+	if addr.IsPrivate() || addr.IsLoopback() || addr.IsLinkLocalUnicast() {
+		return errors.New("private IP not allowed")
+	}
+
+	return nil
 }

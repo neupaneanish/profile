@@ -76,3 +76,20 @@ func profile(
 		UpdatedBy: row.UpdatedBy.String(),
 	}, nil
 }
+
+func (s *GatewayProfileService) CheckProfile(
+	ctx context.Context,
+	_ *gatewayProfilev1.CheckProfileRequest,
+) (*gatewayProfilev1.CheckProfileResponse, error) {
+	serviceName := "GatewayProfile"
+	userSession := utils.UserSessionContext(ctx)
+
+	params := &repository.CheckProfileParams{UserID: userSession.UserID}
+	exists, err := s.cfg.Repository.CheckProfile(ctx, params)
+	if err != nil {
+		s.cfg.Logger.ErrorContext(ctx, "Failed to query CheckProfile", "service", serviceName, "error", err)
+		return nil, errs.ErrInternalServer
+	}
+
+	return &gatewayProfilev1.CheckProfileResponse{Exists: exists}, nil
+}

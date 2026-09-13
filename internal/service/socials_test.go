@@ -41,7 +41,7 @@ func TestSocials(t *testing.T) {
 
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 		seedSocial(t, userID, username)
-		seedSocial(t, userID, username)
+		seedSocial(t, userID, username+"1")
 
 		req := &rootProfilev1.SocialsRequest{UserId: userID.String()}
 

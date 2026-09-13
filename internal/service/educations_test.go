@@ -13,10 +13,10 @@ import (
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
-func TestGatewayEducations(t *testing.T) {
+func TestEducations(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success gateway", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
@@ -27,12 +27,8 @@ func TestGatewayEducations(t *testing.T) {
 		assert.NotNil(t, res)
 		assert.Empty(t, res.GetEducations())
 	})
-}
 
-func TestRootEducations(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success Root", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)

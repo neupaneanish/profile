@@ -15,20 +15,21 @@ var (
 	ErrPermissionDenied = status.Error(codes.PermissionDenied, "Don't have access")
 	ErrInvalidUserID    = status.Error(codes.InvalidArgument, "Invalid UserID")
 	ErrInvalidURL       = status.Error(codes.InvalidArgument, "Invalid URL")
+	ErrInvalidIP        = status.Error(codes.InvalidArgument, "Invalid IP")
 	ErrConflict         = status.Error(
 		codes.FailedPrecondition,
 		"Something went wrong, please refresh and try again",
 	)
 )
 
-func ErrUniqueViolation(name string) error {
-	return status.Error(codes.AlreadyExists, fmt.Sprintf("%s already exists", name))
+func ErrUniqueViolation(message string) error {
+	return status.Error(codes.AlreadyExists, fmt.Sprintf("%s already exists", message))
 }
 
-func ErrForeignKeyViolation(name string) error {
-	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s doesnot exists", name))
+func ErrForeignKeyViolation(message string) error {
+	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s doesnot exists", message))
 }
 
-func ErrNotFound(name string) error {
-	return status.Error(codes.NotFound, fmt.Sprintf("%s not found", name))
+func ErrNotFound(message string) error {
+	return status.Error(codes.NotFound, fmt.Sprintf("%s not found", message))
 }
