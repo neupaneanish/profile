@@ -36,7 +36,7 @@ func (s *RootProfileService) Domains(
 ) (*rootProfilev1.DomainsResponse, error) {
 	serviceName := "RootDomains"
 
-	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}

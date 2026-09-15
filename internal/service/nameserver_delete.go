@@ -5,6 +5,7 @@ import (
 
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
+	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func (s *RootProfileService) DeleteNameserver(
@@ -13,7 +14,7 @@ func (s *RootProfileService) DeleteNameserver(
 ) (*profilev1.DeleteNameserverResponse, error) {
 	serviceName := "DeleteNameserver"
 
-	id, idErr := parseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
+	id, idErr := utils.ParseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
 	if idErr != nil {
 		return nil, idErr
 	}

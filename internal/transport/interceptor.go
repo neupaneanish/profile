@@ -9,8 +9,11 @@ import (
 	"uuid"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/valkey-io/valkey-go/om"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"neupaneanish.com.np/profile/internal/config"
+	"neupaneanish.com.np/profile/internal/redis"
 
 	"neupaneanish.com.np/profile/internal/enum"
 
@@ -86,24 +89,15 @@ func (w *WrappedTimeoutStream) Context() context.Context {
 	return w.StreamContext
 }
 
-func AuthInterceptor(ctx context.Context, external, gateway, root map[string]struct{}) (context.Context, error) {
+func AuthInterceptor(
+	ctx context.Context,
+	cfg *config.Config,
+	external, gateway, root map[string]struct{},
+) (context.Context, error) {
+	serviceName := "Interceptor"
 	fullMethod, ok := grpc.Method(ctx)
 	if !ok {
 		return ctx, errs.ErrInternalServer
-	}
-	userIDStr := userDetail(ctx, "x-user-id")
-	role := userDetail(ctx, "x-role")
-	jti := userDetail(ctx, "x-jti")
-
-	hasUserDetail := userIDStr != "" && role != "" && jti != ""
-	var userID uuid.UUID
-
-	if hasUserDetail {
-		var userIDErr error
-		userID, userIDErr = uuid.Parse(userIDStr)
-		if userIDErr != nil || !enum.UserRole(role).Valid() {
-			return ctx, errs.ErrUnauthenticated
-		}
 	}
 
 	_, isExternalEndpoint := external[fullMethod]
@@ -112,31 +106,17 @@ func AuthInterceptor(ctx context.Context, external, gateway, root map[string]str
 
 	switch {
 	case isGatewayEndpoint:
-		if hasUserDetail {
-			return setContextValue(ctx, userID, role, jti), nil
-		}
-		return ctx, errs.ErrUnauthenticated
+		return authContext(ctx, cfg, enum.UserRoleUser, serviceName)
 	case isRootEndpoint:
-		if hasUserDetail {
-			if enum.UserRole(role) == enum.UserRoleRoot {
-				return setContextValue(ctx, userID, role, jti), nil
-			}
-			return ctx, errs.ErrPermissionDenied
-		}
-		return ctx, errs.ErrUnauthenticated
-
+		return authContext(ctx, cfg, enum.UserRoleRoot, serviceName)
 	case isExternalEndpoint:
-		if hasUserDetail {
-			return ctx, errs.ErrPermissionDenied
-		}
-		return ctx, nil
-
+		return externalContext(ctx, cfg, serviceName)
 	default:
 		return ctx, errs.ErrPermissionDenied
 	}
 }
 
-func userDetail(ctx context.Context, header string) string {
+func metadataDetail(ctx context.Context, header string) string {
 	value := metadata.ValueFromIncomingContext(ctx, header)
 	if len(value) == 0 {
 		return ""
@@ -144,12 +124,108 @@ func userDetail(ctx context.Context, header string) string {
 	return value[0]
 }
 
-func setContextValue(ctx context.Context, userID uuid.UUID, role string, jti string) context.Context {
+func authContext(
+	ctx context.Context,
+	cfg *config.Config,
+	role enum.UserRole,
+	serviceName string,
+) (context.Context, error) {
+	xUserID := metadataDetail(ctx, "x-user-id")
+	xRole := metadataDetail(ctx, "x-role")
+	xJti := metadataDetail(ctx, "x-jti")
+	xUsername := metadataDetail(ctx, "x-username")
+
+	hasUserDetail := xUserID != "" && xRole != "" && xJti != "" && xUsername != ""
+	if !hasUserDetail {
+		cfg.Logger.WarnContext(ctx, "Missing metadata", "service", serviceName)
+		return ctx, errs.ErrUnauthenticated
+	}
+
+	userID, userIDErr := uuid.Parse(xUserID)
+	if userIDErr != nil {
+		cfg.Logger.ErrorContext(ctx, "Invalid userID", "service", serviceName, "userID", xUserID, "error", userIDErr)
+		return ctx, errs.ErrUnauthenticated
+	}
+
+	if !enum.UserRole(xRole).Valid() {
+		cfg.Logger.WarnContext(ctx, "Invalid role", "service", serviceName, "role", xRole)
+		return ctx, errs.ErrUnauthenticated
+	}
+
+	if enum.UserRole(xRole) != role {
+		cfg.Logger.WarnContext(ctx, "Missing permission", "service", serviceName, "role", xRole)
+		return ctx, errs.ErrPermissionDenied
+	}
+
 	ctx = logging.InjectFields(ctx, logging.Fields{
 		"user_id", userID.String(),
-		"role", role,
-		"jti", jti,
+		"role", xRole,
+		"jti", xJti,
+		"username", xUsername,
 	})
 
-	return context.WithValue(ctx, utils.SessionKey, &utils.UserSession{UserID: userID})
+	return context.WithValue(
+		ctx, utils.SessionKey,
+		&utils.UserSession{
+			UserID:   userID,
+			Username: xUsername,
+		},
+	), nil
+}
+
+func externalContext(ctx context.Context, cfg *config.Config, serviceName string) (context.Context, error) {
+	hostname := metadataDetail(ctx, "x-hostname")
+	if hostname == "" {
+		return ctx, errs.ErrNotFound("Host")
+	}
+
+	if err := utils.ValidateHostname(hostname, false); err != nil {
+		cfg.Logger.ErrorContext(ctx, "Invalid Hostname", "service", serviceName, "hostname", hostname, "error", err)
+		return ctx, errs.ErrNotFound("Host")
+	}
+
+	data, err := redis.HGet[utils.DomainUser](ctx, utils.DomainUserSessionKey, hostname, cfg.Client)
+	if err != nil {
+		if om.IsRecordNotFound(err) {
+			cfg.Logger.ErrorContext(
+				ctx,
+				"Hostname not found",
+				"service",
+				serviceName,
+				"hostname",
+				hostname,
+				"error",
+				err,
+			)
+			return ctx, errs.ErrNotFound("Host")
+		}
+		cfg.Logger.ErrorContext(
+			ctx,
+			"Failed hostname query",
+			"service",
+			"Interceptor",
+			"hostname",
+			hostname,
+			"error",
+			err,
+		)
+		return ctx, errs.ErrInternalServer
+	}
+
+	userID, userIDErr := utils.ParseUUID(ctx, data.UserID, "Interceptor", cfg.Logger)
+	if userIDErr != nil {
+		return ctx, errs.ErrNotFound("Host")
+	}
+
+	ctx = logging.InjectFields(ctx, logging.Fields{
+		"user_id", data.UserID,
+		"hostname", hostname,
+	})
+
+	return context.WithValue(
+		ctx, utils.DomainSessionKey,
+		&utils.ExternalUserSession{
+			UserID: userID,
+		},
+	), nil
 }

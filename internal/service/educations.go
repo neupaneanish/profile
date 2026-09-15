@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
+	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -36,7 +37,7 @@ func (s *RootProfileService) Educations(
 ) (*rootProfilev1.EducationsResponse, error) {
 	serviceName := "RootEducations"
 
-	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
@@ -47,6 +48,21 @@ func (s *RootProfileService) Educations(
 	}
 
 	return &rootProfilev1.EducationsResponse{Educations: res}, nil
+}
+
+func (s *ExternalProfileService) Educations(
+	ctx context.Context,
+	_ *externalProfilev1.EducationsRequest,
+) (*externalProfilev1.EducationsResponse, error) {
+	serviceName := "ExternalEducations"
+	userID := utils.DomainUserSessionContext(ctx)
+
+	res, err := educations(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &externalProfilev1.EducationsResponse{Educations: res}, nil
 }
 
 func educations(

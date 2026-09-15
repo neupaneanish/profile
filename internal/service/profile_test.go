@@ -33,7 +33,7 @@ func TestProfile(t *testing.T) {
 		userID := uuid.NewV7()
 		seedProfile(t, userID)
 
-		ctx := contextWithValue(t, userID, enum.UserRoleRoot)
+		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 		req := &gatewayProfilev1.ProfileRequest{}
 		res, err := gatewayProfileServiceClient.Profile(ctx, req)
 		require.NoError(t, err)

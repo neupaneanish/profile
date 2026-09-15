@@ -19,7 +19,6 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, and Valkey.
 - Valkey for caching
 - OpenTelemetry observability
 - Dockerized testing (testcontainers)
-- Benchmarks, E2E
 
 ---
 
@@ -42,12 +41,45 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, and Valkey.
 
 ### External
 
+- [x] `Profile`
+- [x] `About`
+- [x] `Educations`
+- [x] `Experiences`
+- [x] `Socials`
+
 ### Gateway
 
-- [X] Create profile
-- [ ] Update Profile
+- [X] Profile
+    - [X] `Create` | `Get` | `Update` | `Exists`
+- [X] About
+    - [X] `Create` | `Get` | `Update`
+- [X] Education
+    - [X] `Create` | `Get` | `Update` | `Delete` | `List`
+- [X] Experience
+    - [X] `Create` | `Get` | `Update` | `Delete` | `List`
+- [X] Domain
+    - [X] `Create` | `Verify` | `Delete` | `List`
+- [X] Social
+    - [X] `Create` | `Update` | `Delete` | `List` | `Icons`
 
 ### Root
+
+- [X] Profile
+    - [X] `Get` | `Update`
+- [X] About
+    - [X] `Get` | `Update`
+- [X] Education
+    - [X] `Get` | `Update` | `List`
+- [X] Experience
+    - [X] `Get` | `Update` | `List`
+- [X] Domain
+    - [X] `List`
+- [X] Social
+    - [X] `Update` | `List`
+- [X] Nameserver
+    - [X] `Create` | `Delete` | `List`
+- [X] Icon
+    - [X] `Create`|`Update` | `Delete` | `List`
 
 ---
 
@@ -103,7 +135,6 @@ sqlc generate
 # 5. Execute the tests
 go test -v -tags=unit ./...
 go test -v -tags=integration ./...
-go test -v -tags=benchmark ./...
 go test -v -tags=e2e ./...
 
 # 6. Launch the local microservice API server
@@ -113,7 +144,7 @@ go run cmd/server/main.go
 
 ---
 
-## Coverage ~96.00%
+## Coverage ~89.70%
 
 > Note: Metrics reflect core application logic after filtering out `main.go`, generated protobuf definitions, raw SQL
 > repository code, and test helper suites.
@@ -123,7 +154,7 @@ go run cmd/server/main.go
 
 ```bash
 # Generate coverage
-go test -race -tags=unit,integration,benchmark,e2e -coverprofile=coverage.out -coverpkg=./... ./..
+go test -race -tags=unit,integration -coverprofile=coverage.out -coverpkg=./... ./..
 
 # Filter out external boundaries, generated code, and tooling 
 grep -v -E "cmd/|/internal/protobuf/|/internal/repository/|/tests/|/protobuf/|/database/" coverage.out > coverage.clean.out

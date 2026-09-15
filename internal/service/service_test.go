@@ -4,6 +4,7 @@ package service_test
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 	"uuid"
@@ -27,10 +29,12 @@ import (
 	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/redis"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/service"
 	"neupaneanish.com.np/profile/internal/telemetry"
 	"neupaneanish.com.np/profile/internal/transport"
+	"neupaneanish.com.np/profile/internal/utils"
 	"neupaneanish.com.np/profile/tests"
 
 	// Register the file source driver for migrations.
@@ -249,6 +253,7 @@ func contextWithValue(t *testing.T, userID uuid.UUID, role enum.UserRole) contex
 		"x-user-id", userID.String(),
 		"x-role", string(role),
 		"x-jti", uuid.NewV7().String(),
+		"x-username", rand.Text()[:8],
 	)
 
 	ctx := metadata.NewOutgoingContext(t.Context(), md)
@@ -354,4 +359,149 @@ func getExperience(t *testing.T, userID uuid.UUID) *repository.Experience {
 	require.NoError(t, eduErr)
 
 	return experience
+}
+
+func seedAbout(t *testing.T) *repository.About {
+	t.Helper()
+	userID := uuid.NewV7()
+	params := &repository.CreateAboutParams{
+		UserID:    userID,
+		About:     rand.Text() + rand.Text(),
+		CreatedBy: userID,
+		UpdatedBy: userID,
+	}
+
+	row, err := cfg.Repository.CreateAbout(t.Context(), params)
+	require.NoError(t, err)
+	return row
+}
+
+func externalContextWithValue(t *testing.T, userID uuid.UUID, hostname string) context.Context {
+	t.Helper()
+
+	md := metadata.Pairs("x-hostname", hostname)
+
+	data := &utils.DomainUser{
+		Key:    hostname,
+		UserID: userID.String(),
+	}
+
+	err := redis.HSet[utils.DomainUser](t.Context(), utils.DomainUserSessionKey, data, cfg.Client)
+	require.NoError(t, err)
+
+	ctx := metadata.NewOutgoingContext(t.Context(), md)
+	return ctx
+}
+
+func seedNameserver(t *testing.T, ip, ipType string) uuid.UUID {
+	t.Helper()
+
+	params := &repository.CreateNameserverParams{
+		Ip:        ip,
+		IpType:    ipType,
+		CreatedBy: uuid.Nil(),
+		UpdatedBy: uuid.Nil(),
+	}
+
+	id, err := cfg.Repository.CreateNameserver(t.Context(), params)
+	require.NoError(t, err)
+	return id
+}
+
+func getNameserver(t *testing.T, ip, ipType string) *repository.Nameserver {
+	t.Helper()
+
+	id := seedNameserver(t, ip, ipType)
+
+	ns, err := cfg.Repository.Nameservers(t.Context())
+	require.NoError(t, err)
+
+	for _, n := range ns {
+		if n.ID == id {
+			return n
+		}
+	}
+	return nil
+}
+
+func seedDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) uuid.UUID {
+	t.Helper()
+
+	nsID := seedNameserver(t, ip, ipType)
+
+	params := &repository.CreateDomainParams{
+		UserID:       userID,
+		NameserverID: nsID,
+		Fqdn:         url,
+		Txt:          rand.Text(),
+		CreatedBy:    userID,
+		UpdatedBy:    userID,
+	}
+
+	id, err := cfg.Repository.CreateDomain(t.Context(), params)
+	require.NoError(t, err)
+	return id
+}
+
+func getDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) *repository.DomainRow {
+	t.Helper()
+
+	id := seedDomain(t, userID, url, ip, ipType)
+
+	params := &repository.DomainParams{
+		ID:     id,
+		UserID: userID,
+	}
+
+	domain, err := cfg.Repository.Domain(t.Context(), params)
+	require.NoError(t, err)
+	return domain
+}
+
+func seedIcon(t *testing.T, name string, siteSuffix *string) uuid.UUID {
+	t.Helper()
+	params := &repository.CreateIconParams{
+		Name:       name,
+		Site:       name + ".com",
+		SiteSuffix: siteSuffix,
+		Url:        name + ".com",
+		Slug:       name,
+		Color:      "#FFFFFF",
+		CreatedBy:  uuid.Nil(),
+		UpdatedBy:  uuid.Nil(),
+	}
+
+	id, err := cfg.Repository.CreateIcon(t.Context(), params)
+	require.NoError(t, err)
+	return id
+}
+
+func getIcon(t *testing.T, name string, siteSuffix *string) *repository.IconRow {
+	t.Helper()
+	id := seedIcon(t, name, siteSuffix)
+
+	params := &repository.IconParams{ID: id}
+
+	icon, iconErr := cfg.Repository.Icon(t.Context(), params)
+	require.NoError(t, iconErr)
+	return icon
+}
+
+func seedSocial(t *testing.T, userID uuid.UUID, username string) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+
+	name := strings.ToLower(rand.Text()[:8])
+	icon := getIcon(t, name, &name)
+
+	params := &repository.CreateSocialParams{
+		UserID:    userID,
+		IconID:    icon.ID,
+		Username:  username,
+		CreatedBy: userID,
+		UpdatedBy: userID,
+	}
+	id, err := cfg.Repository.CreateSocial(t.Context(), params)
+	require.NoError(t, err)
+
+	return icon.ID, id
 }

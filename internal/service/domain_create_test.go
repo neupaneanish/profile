@@ -13,7 +13,6 @@ import (
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
-	"neupaneanish.com.np/profile/internal/repository"
 )
 
 func TestCreateDomain(t *testing.T) {
@@ -69,38 +68,4 @@ func TestCreateDomain(t *testing.T) {
 		assert.Nil(t, res)
 		assert.Equal(t, errs.ErrInvalidURL, err)
 	})
-}
-
-func seedDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) uuid.UUID {
-	t.Helper()
-
-	nsID := seedNameserver(t, ip, ipType)
-
-	params := &repository.CreateDomainParams{
-		UserID:       userID,
-		NameserverID: nsID,
-		Fqdn:         url,
-		Txt:          rand.Text(),
-		CreatedBy:    userID,
-		UpdatedBy:    userID,
-	}
-
-	id, err := cfg.Repository.CreateDomain(t.Context(), params)
-	require.NoError(t, err)
-	return id
-}
-
-func getDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) *repository.DomainRow {
-	t.Helper()
-
-	id := seedDomain(t, userID, url, ip, ipType)
-
-	params := &repository.DomainParams{
-		ID:     id,
-		UserID: userID,
-	}
-
-	domain, err := cfg.Repository.Domain(t.Context(), params)
-	require.NoError(t, err)
-	return domain
 }

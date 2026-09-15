@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
+	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -36,7 +37,7 @@ func (s *RootProfileService) Profile(
 	req *rootProfilev1.ProfileRequest,
 ) (*rootProfilev1.ProfileResponse, error) {
 	serviceName := "RootProfile"
-	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
@@ -46,6 +47,24 @@ func (s *RootProfileService) Profile(
 		return nil, err
 	}
 	return &rootProfilev1.ProfileResponse{Profile: res}, nil
+}
+
+func (s *ExternalProfileService) Profile(
+	ctx context.Context,
+	_ *externalProfilev1.ProfileRequest,
+) (*externalProfilev1.ProfileResponse, error) {
+	serviceName := "ExternalProfile"
+	userID := utils.DomainUserSessionContext(ctx)
+
+	res, err := profile(ctx, userID, serviceName, s.cfg.Repository, s.cfg.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &externalProfilev1.ProfileResponse{
+		Name:  res.GetName(),
+		Title: res.GetTitle(),
+	}, nil
 }
 
 func profile(

@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
+	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -63,7 +64,7 @@ func (s *RootProfileService) Socials(
 	req *rootProfilev1.SocialsRequest,
 ) (*rootProfilev1.SocialsResponse, error) {
 	serviceName := "RootSocials"
-	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
@@ -78,6 +79,31 @@ func (s *RootProfileService) Socials(
 	}, nil
 }
 
+func (s *ExternalProfileService) Socials(
+	ctx context.Context,
+	_ *externalProfilev1.SocialsRequest,
+) (*externalProfilev1.SocialsResponse, error) {
+	serviceName := "ExternalSocials"
+	userID := utils.DomainUserSessionContext(ctx)
+
+	rows, err := socials(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*externalProfilev1.Socials, len(rows))
+	for i, d := range rows {
+		res[i] = &externalProfilev1.Socials{
+			Id:   d.GetId(),
+			Name: d.GetName(),
+			Url:  d.GetSite(),
+			Icon: d.GetIcon(),
+		}
+	}
+
+	return &externalProfilev1.SocialsResponse{Socials: res}, nil
+}
+
 func socials(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -85,9 +111,7 @@ func socials(
 	logger *slog.Logger,
 	serviceName string,
 ) ([]*profilev1.Socials, error) {
-	params := &repository.SocialsParams{
-		UserID: userID,
-	}
+	params := &repository.SocialsParams{UserID: userID}
 
 	rows, err := repo.Socials(ctx, params)
 	if err != nil {

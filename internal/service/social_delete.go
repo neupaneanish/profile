@@ -15,7 +15,7 @@ func (s *GatewayProfileService) DeleteSocial(
 	serviceName := "DeleteSocial"
 	userSession := utils.UserSessionContext(ctx)
 
-	id, idErr := parseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
+	id, idErr := utils.ParseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
 	if idErr != nil {
 		return nil, idErr
 	}

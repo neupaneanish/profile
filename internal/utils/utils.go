@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/netip"
 	"time"
 	"uuid"
@@ -10,14 +11,19 @@ import (
 	"golang.org/x/net/publicsuffix"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"neupaneanish.com.np/profile/internal/errs"
 )
 
 type ContextKey string
 
-const SessionKey ContextKey = "user_session"
+const (
+	SessionKey       ContextKey = "user_session"
+	DomainSessionKey ContextKey = "domain_user_session"
+)
 
 type UserSession struct {
-	UserID uuid.UUID
+	UserID   uuid.UUID
+	Username string
 }
 
 func UserSessionContext(ctx context.Context) *UserSession {
@@ -61,13 +67,13 @@ const (
 	IconUniqueViolationURLSlug      = "unique_url_slug"
 )
 
-func ValidateURL(domain string, subDomain bool) error {
-	eTLD, icann := publicsuffix.PublicSuffix(domain)
-	if !icann || eTLD == domain {
+func ValidateHostname(hostname string, subDomain bool) error {
+	eTLD, icann := publicsuffix.PublicSuffix(hostname)
+	if !icann || eTLD == hostname {
 		return errors.New("invalid public suffix")
 	}
 
-	eTLDPlusOne, err := publicsuffix.EffectiveTLDPlusOne(domain)
+	eTLDPlusOne, err := publicsuffix.EffectiveTLDPlusOne(hostname)
 	if err != nil {
 		return err
 	}
@@ -76,7 +82,7 @@ func ValidateURL(domain string, subDomain bool) error {
 		return nil
 	}
 
-	if domain != eTLDPlusOne {
+	if hostname != eTLDPlusOne {
 		return errors.New("subdomains not allowed")
 	}
 
@@ -94,4 +100,31 @@ func ValidateIP(ip string) error {
 	}
 
 	return nil
+}
+
+type DomainUser struct {
+	Key    string `json:"key"     valkey:",key"`
+	UserID string `json:"user_id"`
+}
+
+const (
+	DomainUserSessionKey = "domain:user:session"
+)
+
+type ExternalUserSession struct {
+	UserID uuid.UUID
+}
+
+func DomainUserSessionContext(ctx context.Context) uuid.UUID {
+	session, _ := ctx.Value(DomainSessionKey).(*ExternalUserSession)
+	return session.UserID
+}
+
+func ParseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.Logger) (uuid.UUID, error) {
+	userID, uuidErr := uuid.Parse(userIDStr)
+	if uuidErr != nil {
+		logger.WarnContext(ctx, "Failed to parse userID", "service", serviceName, "userID", userIDStr)
+		return uuid.Nil(), errs.ErrInvalidUserID
+	}
+	return userID, nil
 }

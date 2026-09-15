@@ -13,7 +13,6 @@ import (
 	"neupaneanish.com.np/profile/internal/enum"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
-	"neupaneanish.com.np/profile/internal/repository"
 )
 
 func TestIcons(t *testing.T) {
@@ -49,33 +48,4 @@ func TestIcons(t *testing.T) {
 		assert.NotNil(t, res)
 		assert.GreaterOrEqual(t, len(res.GetIcons()), 2)
 	})
-}
-
-func seedIcon(t *testing.T, name string, siteSuffix *string) uuid.UUID {
-	t.Helper()
-	params := &repository.CreateIconParams{
-		Name:       name,
-		Site:       name + ".com",
-		SiteSuffix: siteSuffix,
-		Url:        name + ".com",
-		Slug:       name,
-		Color:      "#FFFFFF",
-		CreatedBy:  uuid.Nil(),
-		UpdatedBy:  uuid.Nil(),
-	}
-
-	id, err := cfg.Repository.CreateIcon(t.Context(), params)
-	require.NoError(t, err)
-	return id
-}
-
-func getIcon(t *testing.T, name string, siteSuffix *string) *repository.IconRow {
-	t.Helper()
-	id := seedIcon(t, name, siteSuffix)
-
-	params := &repository.IconParams{ID: id}
-
-	icon, iconErr := cfg.Repository.Icon(t.Context(), params)
-	require.NoError(t, iconErr)
-	return icon
 }

@@ -22,15 +22,6 @@ import (
 	"neupaneanish.com.np/profile/internal/utils"
 )
 
-func parseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.Logger) (uuid.UUID, error) {
-	userID, uuidErr := uuid.Parse(userIDStr)
-	if uuidErr != nil {
-		logger.WarnContext(ctx, "Failed to parse userID", "service", serviceName, "userID", userIDStr)
-		return uuid.Nil(), errs.ErrInvalidUserID
-	}
-	return userID, nil
-}
-
 func socialError(
 	ctx context.Context,
 	err error,
@@ -138,7 +129,7 @@ func createUpdateEducation(
 		return nil
 	}
 
-	idx, updateIDErr := parseUUID(ctx, id, serviceName, logger)
+	idx, updateIDErr := utils.ParseUUID(ctx, id, serviceName, logger)
 	if updateIDErr != nil {
 		return updateIDErr
 	}
@@ -218,7 +209,7 @@ func createUpdateExperience(
 		return nil
 	}
 
-	idx, idErr := parseUUID(ctx, id, serviceName, logger)
+	idx, idErr := utils.ParseUUID(ctx, id, serviceName, logger)
 	if idErr != nil {
 		return idErr
 	}
@@ -304,7 +295,7 @@ func updateSocial(
 	repo repository.Querier,
 	logger *slog.Logger,
 ) error {
-	idx, idxErr := parseUUID(ctx, req.GetId(), serviceName, logger)
+	idx, idxErr := utils.ParseUUID(ctx, req.GetId(), serviceName, logger)
 	if idxErr != nil {
 		return idxErr
 	}
@@ -346,7 +337,7 @@ func (s *RootProfileService) createUpdateIcon(
 	name := req.GetName()
 
 	site := req.GetSite()
-	siteErr := utils.ValidateURL(site, false)
+	siteErr := utils.ValidateHostname(site, false)
 	if siteErr != nil {
 		s.cfg.Logger.WarnContext(ctx, "Invalid Site", "service", serviceName, "error", siteErr)
 		return errs.ErrInvalidURL
@@ -355,7 +346,7 @@ func (s *RootProfileService) createUpdateIcon(
 	siteSuffix := utils.StringValue(req.GetSiteSuffix())
 
 	url := req.GetUrl()
-	urlErr := utils.ValidateURL(url, true)
+	urlErr := utils.ValidateHostname(url, true)
 	if urlErr != nil {
 		s.cfg.Logger.WarnContext(ctx, "Invalid URL", "service", serviceName, "error", urlErr)
 		return errs.ErrInvalidURL
@@ -385,7 +376,7 @@ func (s *RootProfileService) createUpdateIcon(
 		return nil
 	}
 
-	idx, idxErr := parseUUID(ctx, id, serviceName, s.cfg.Logger)
+	idx, idxErr := utils.ParseUUID(ctx, id, serviceName, s.cfg.Logger)
 	if idxErr != nil {
 		return idxErr
 	}

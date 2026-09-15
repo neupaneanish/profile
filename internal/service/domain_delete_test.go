@@ -31,6 +31,7 @@ func TestDeleteDomain(t *testing.T) {
 
 		req := &profilev1.DeleteDomainRequest{
 			Id:        domain.ID.String(),
+			Fqdn:      domain.Fqdn,
 			UpdatedAt: timestamppb.New(domain.UpdatedAt),
 		}
 
@@ -48,6 +49,7 @@ func TestDeleteDomain(t *testing.T) {
 
 		req := &profilev1.DeleteDomainRequest{
 			Id:        userID.String(),
+			Fqdn:      rand.Text()[:8] + ".com",
 			UpdatedAt: timestamppb.Now(),
 		}
 

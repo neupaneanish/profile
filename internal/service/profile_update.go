@@ -41,7 +41,7 @@ func (s *RootProfileService) UpdateProfile(
 	serviceName := "RootUpdateProfile"
 	userSession := utils.UserSessionContext(ctx)
 
-	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}

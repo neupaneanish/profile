@@ -42,7 +42,7 @@ func NewOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
 	})
 
 	authFunc := func(ctx context.Context) (context.Context, error) {
-		return AuthInterceptor(ctx, externalEndpoints(), gatewayEndpoints(), rootEndpoints())
+		return AuthInterceptor(ctx, cfg, externalEndpoints(), gatewayEndpoints(), rootEndpoints())
 	}
 
 	opts := []grpc.ServerOption{

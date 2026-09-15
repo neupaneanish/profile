@@ -15,7 +15,7 @@ func (s *GatewayProfileService) CreateSocial(
 	serviceName := "CreateSocial"
 	userSession := utils.UserSessionContext(ctx)
 
-	iconID, iconIDErr := parseUUID(ctx, req.GetIconId(), serviceName, s.cfg.Logger)
+	iconID, iconIDErr := utils.ParseUUID(ctx, req.GetIconId(), serviceName, s.cfg.Logger)
 	if iconIDErr != nil {
 		return nil, iconIDErr
 	}

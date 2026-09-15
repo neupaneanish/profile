@@ -22,7 +22,7 @@ func (s *GatewayProfileService) CreateDomain(
 	serviceName := "CreateDomain"
 	userSession := utils.UserSessionContext(ctx)
 
-	if err := utils.ValidateURL(req.GetUrl(), false); err != nil {
+	if err := utils.ValidateHostname(req.GetUrl(), false); err != nil {
 		s.cfg.Logger.WarnContext(ctx, "Invalid Domain", "service", serviceName, "error", err)
 		return nil, errs.ErrInvalidURL
 	}

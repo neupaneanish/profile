@@ -38,7 +38,7 @@ func (s *RootProfileService) Education(
 ) (*rootProfilev1.EducationResponse, error) {
 	serviceName := "RootEducation"
 
-	userID, userIDErr := parseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
@@ -60,7 +60,7 @@ func education(
 	logger *slog.Logger,
 	id string, serviceName string,
 ) (*profilev1.Education, error) {
-	idx, idxErr := parseUUID(ctx, id, serviceName, logger)
+	idx, idxErr := utils.ParseUUID(ctx, id, serviceName, logger)
 	if idxErr != nil {
 		return nil, idxErr
 	}
