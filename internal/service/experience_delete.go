@@ -34,7 +34,11 @@ func (s *GatewayProfileService) DeleteExperience(
 		serviceName,
 		"Experience",
 		req.GetId(),
+		userSession.Username,
+		userSession.UserID,
+		userSession.UserID,
 		s.cfg.Logger,
+		s.cfg.Redpanda,
 	); deleteErr != nil {
 		return nil, deleteErr
 	}

@@ -68,8 +68,10 @@ func deleteDB(
 	ctx context.Context,
 	affected int64,
 	err error,
-	serviceName, table, id string,
+	serviceName, table, id, username string,
+	actorID, userID uuid.UUID,
 	logger *slog.Logger,
+	redpanda *config.Redpanda,
 ) error {
 	if err != nil {
 		logger.ErrorContext(ctx, fmt.Sprintf("Delete %s Failed", table), "service", serviceName, "error", err)
@@ -85,6 +87,14 @@ func deleteDB(
 		)
 		return errs.ErrConflict
 	}
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  actorID,
+		Username: username,
+		UserID:   userID,
+		Message:  fmt.Sprintf("delete %s", table),
+	}
+	redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return nil
 }
 

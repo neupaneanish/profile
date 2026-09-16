@@ -34,7 +34,11 @@ func (s *GatewayProfileService) DeleteEducation(
 		serviceName,
 		"Education",
 		req.GetId(),
+		userSession.Username,
+		userSession.UserID,
+		userSession.UserID,
 		s.cfg.Logger,
+		s.cfg.Redpanda,
 	); deleteErr != nil {
 		return nil, deleteErr
 	}

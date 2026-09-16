@@ -36,7 +36,19 @@ func (s *GatewayProfileService) DeleteDomain(
 	}
 
 	affected, err := s.cfg.Repository.DeleteDomain(ctx, params)
-	if dbErr := deleteDB(ctx, affected, err, serviceName, "Domain", req.GetId(), s.cfg.Logger); dbErr != nil {
+	if dbErr := deleteDB(
+		ctx,
+		affected,
+		err,
+		serviceName,
+		"Domain",
+		req.GetId(),
+		userSession.Username,
+		userSession.UserID,
+		userSession.UserID,
+		s.cfg.Logger,
+		s.cfg.Redpanda,
+	); dbErr != nil {
 		return nil, dbErr
 	}
 

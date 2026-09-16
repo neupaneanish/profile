@@ -34,18 +34,14 @@ func (s *GatewayProfileService) DeleteSocial(
 		serviceName,
 		"Social",
 		req.GetId(),
+		userSession.Username,
+		userSession.UserID,
+		userSession.UserID,
 		s.cfg.Logger,
+		s.cfg.Redpanda,
 	); deleteErr != nil {
 		return nil, deleteErr
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Message:  "social deleted",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &profilev1.DeleteSocialResponse{}, nil
 }

@@ -33,7 +33,11 @@ func (s *RootProfileService) DeleteNameserver(
 		serviceName,
 		"Nameserver",
 		req.GetId(),
+		userSession.Username,
+		userSession.UserID,
+		userSession.UserID,
 		s.cfg.Logger,
+		s.cfg.Redpanda,
 	); deleteErr != nil {
 		return nil, deleteErr
 	}
