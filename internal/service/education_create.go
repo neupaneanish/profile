@@ -27,5 +27,14 @@ func (s *GatewayProfileService) CreateEducation(
 	); err != nil {
 		return nil, err
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "education created",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProfilev1.CreateEducationResponse{}, nil
 }

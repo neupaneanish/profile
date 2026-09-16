@@ -55,5 +55,13 @@ func (s *GatewayProfileService) DeleteDomain(
 		)
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "domain deleted",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &profilev1.DeleteDomainResponse{}, nil
 }

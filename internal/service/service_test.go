@@ -1,5 +1,3 @@
-//go:build integration
-
 package service_test
 
 import (
@@ -29,7 +27,6 @@ import (
 	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
-	"neupaneanish.com.np/profile/internal/redis"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/service"
 	"neupaneanish.com.np/profile/internal/telemetry"
@@ -54,6 +51,8 @@ type container struct {
 	dbCleanup        func()
 	vkURL            string
 	vkCleanup        func()
+	rpURL            string
+	rpCleanup        func()
 	telemetryURL     string
 	telemetryCleanup func()
 }
@@ -64,7 +63,7 @@ func TestMain(m *testing.M) {
 	baseLogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	testContainer := setupContainer(baseLogger)
 
-	testEnv := setupEnv(testContainer.dbURL, testContainer.vkURL)
+	testEnv := setupEnv(testContainer.dbURL, testContainer.vkURL, testContainer.rpURL)
 
 	logger, loggerCleanup, loggerErr := telemetry.NewTelemetry(
 		ctx,
@@ -141,11 +140,19 @@ func setupContainer(logger *slog.Logger) *container {
 		os.Exit(1)
 	}
 
+	rpURL, rpCleanup, rpErr := tests.Redpanda()
+	if rpErr != nil {
+		logger.Error("Failed to start redpanda container", "error", telemetryErr)
+		os.Exit(1)
+	}
+
 	return &container{
 		dbURL:            dbURL,
 		dbCleanup:        dbCleanup,
 		vkURL:            vkURL,
 		vkCleanup:        vkCleanup,
+		rpURL:            rpURL,
+		rpCleanup:        rpCleanup,
 		telemetryURL:     telemetryURL,
 		telemetryCleanup: telemetryCleanup,
 	}
@@ -191,10 +198,11 @@ func runMigrations(url string) error {
 	return nil
 }
 
-func setupEnv(db string, vk string) *config.Env {
+func setupEnv(db, vk, rp string) *config.Env {
 	return &config.Env{
 		DatabaseURL: db,
 		ValkeyURL:   vk,
+		RedpandaURL: rp,
 		Environment: "test",
 		ServiceName: "Test",
 	}
@@ -379,14 +387,18 @@ func seedAbout(t *testing.T) *repository.About {
 func externalContextWithValue(t *testing.T, userID uuid.UUID, hostname string) context.Context {
 	t.Helper()
 
-	md := metadata.Pairs("x-hostname", hostname)
+	md := metadata.Pairs(
+		"x-hostname", hostname,
+		"x-user-id", userID.String(),
+	)
 
-	data := &utils.DomainUser{
-		Key:    hostname,
-		UserID: userID.String(),
-	}
+	cmd := cfg.Client.B().Hset().
+		Key(utils.DomainUserSessionKey).
+		FieldValue().
+		FieldValue(hostname, userID.String()).
+		Build()
 
-	err := redis.HSet[utils.DomainUser](t.Context(), utils.DomainUserSessionKey, data, cfg.Client)
+	err := cfg.Client.Do(t.Context(), cmd).Error()
 	require.NoError(t, err)
 
 	ctx := metadata.NewOutgoingContext(t.Context(), md)

@@ -39,5 +39,13 @@ func (s *GatewayProfileService) DeleteEducation(
 		return nil, deleteErr
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "education deleted",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProfilev1.DeleteEducationResponse{}, nil
 }

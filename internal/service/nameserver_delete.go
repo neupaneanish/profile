@@ -13,6 +13,7 @@ func (s *RootProfileService) DeleteNameserver(
 	req *profilev1.DeleteNameserverRequest,
 ) (*profilev1.DeleteNameserverResponse, error) {
 	serviceName := "DeleteNameserver"
+	userSession := utils.UserSessionContext(ctx)
 
 	id, idErr := utils.ParseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
 	if idErr != nil {
@@ -36,6 +37,14 @@ func (s *RootProfileService) DeleteNameserver(
 	); deleteErr != nil {
 		return nil, deleteErr
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "nameserver deleted",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &profilev1.DeleteNameserverResponse{}, nil
 }

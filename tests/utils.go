@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	contextTimeout   = 60 * time.Second
-	pgContextTimeout = 60 * time.Second
-	occurrence       = 2
+	contextTimeout          = 60 * time.Second
+	containerContextTimeout = 60 * time.Second
+	occurrence              = 2
 )
 
 func checkAndReturn(

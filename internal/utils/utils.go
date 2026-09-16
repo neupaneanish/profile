@@ -128,3 +128,14 @@ func ParseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.
 	}
 	return userID, nil
 }
+
+type RedpandaRootEventNotificationPayload struct {
+	ActorID  uuid.UUID `json:"actor_id"`
+	Username string    `json:"username"`
+	UserID   uuid.UUID `json:"user_id"`
+	Message  string    `json:"message"`
+}
+
+const (
+	RedpandaRootEventNotifications = "root-event-notifications"
+)

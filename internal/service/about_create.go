@@ -38,6 +38,14 @@ func (s *GatewayProfileService) CreateAbout(
 		return nil, errs.ErrInternalServer
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "created about",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProfilev1.CreateAboutResponse{
 		About: &profilev1.About{
 			UserId:    row.UserID.String(),

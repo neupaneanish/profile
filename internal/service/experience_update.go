@@ -29,6 +29,14 @@ func (s *GatewayProfileService) UpdateExperience(
 		return nil, err
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "experience updated",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProfilev1.UpdateExperienceResponse{}, nil
 }
 
@@ -57,6 +65,14 @@ func (s *RootProfileService) UpdateExperience(
 	); err != nil {
 		return nil, err
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userID,
+		Message:  "experience updated",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.UpdateExperienceResponse{}, nil
 }

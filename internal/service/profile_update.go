@@ -21,9 +21,11 @@ func (s *GatewayProfileService) UpdateProfile(
 		userSession.UserID,
 		req.GetProfile(),
 		req.GetUpdatedAt().AsTime(),
-		s.cfg.Repository,
-		s.cfg.Logger,
 		serviceName,
+		userSession.Username,
+		s.cfg.Repository,
+		s.cfg.Redpanda,
+		s.cfg.Logger,
 	)
 	if err != nil {
 		return nil, err
@@ -52,9 +54,11 @@ func (s *RootProfileService) UpdateProfile(
 		userSession.UserID,
 		req.GetProfile(),
 		req.GetUpdatedAt().AsTime(),
-		s.cfg.Repository,
-		s.cfg.Logger,
 		serviceName,
+		userSession.Username,
+		s.cfg.Repository,
+		s.cfg.Redpanda,
+		s.cfg.Logger,
 	)
 	if err != nil {
 		return nil, err

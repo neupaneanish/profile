@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"neupaneanish.com.np/profile/internal/config"
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
@@ -253,9 +254,10 @@ func updateProfile(
 	userID, updatedBy uuid.UUID,
 	req *profilev1.CreateUpdateProfile,
 	updatedAt time.Time,
+	serviceName, username string,
 	repo repository.Querier,
+	redpanda *config.Redpanda,
 	logger *slog.Logger,
-	serviceName string,
 ) (*profilev1.Profile, error) {
 	params := &repository.UpdateProfileParams{
 		Name:      req.GetName(),
@@ -274,6 +276,15 @@ func updateProfile(
 		logger.ErrorContext(ctx, "Update Profile Failed", "service", serviceName, "error", rowErr)
 		return nil, errs.ErrInternalServer
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  updatedBy,
+		Username: username,
+		UserID:   userID,
+		Message:  "profile updated",
+	}
+	redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &profilev1.Profile{
 		UserId:    row.UserID.String(),
 		Name:      row.Name,

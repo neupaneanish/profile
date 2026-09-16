@@ -6,7 +6,7 @@
 
 ## Overview
 
-Distributed Profile Microservice with Go, gRPC, PostgreSQL, and Valkey.
+Distributed Profile Microservice with Go, gRPC, PostgreSQL, Redpanda, and Valkey.
 
 ---
 
@@ -17,6 +17,7 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, and Valkey.
 - SQLc query
 - PostgreSQL Database
 - Valkey for caching
+- Redpanda for data stream
 - OpenTelemetry observability
 - Dockerized testing (testcontainers)
 
@@ -26,10 +27,11 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, and Valkey.
 
 | Technology                                                |                                                                                                  | Description                                                                      |
 |:----------------------------------------------------------|:------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------|
-| [**Go**](https://go.dev)                                  |             <img src="https://thesvg.org/icons/go/default.svg" height="12" alt="Go">             | Core application logic                                                           |
+| [**Go**](https://go.dev)                                  |                 <img src="https://cdn.simpleicons.org/go" height="24" alt="Go">                  | Core application logic                                                           |
 | [**gRPC**](https://grpc.io)                               |           <img src="https://thesvg.org/icons/grpc/default.svg" height="24" alt="gRPC">           | High-performance RPC framework                                                   |
 | [**PostgreSQL**](https://postgresql.org)                  |     <img src="https://thesvg.org/icons/postgresql/default.svg" height="24" alt="PostgreSQL">     | Primary relational database                                                      |
 | [**Valkey**](https://valkey.io)                           |         <img src="https://thesvg.org/icons/valkey/default.svg" height="24" alt="Valkey">         | High-performance data structure store                                            |
+| [**Redpanda**](https://redpanda.com)                      |           <img src="https://cdn.simpleicons.org/apachekafka" height="24" alt="Valkey">           | Real-time data streams                                                           |
 | [**Docker**](https://docker.com)                          |         <img src="https://thesvg.org/icons/docker/default.svg" height="24" alt="Docker">         | Containerization and deployment                                                  |
 | [**Test Containers**](https://testcontainers.com)         | <img src="https://thesvg.org/icons/development-containers/default.svg" height="24" alt="Docker"> | Orchestrates real PostgreSQL and Valkey Docker instances inside automated tests. |
 | [**GitHub Actions**](https://github.com/features/actions) | <img src="https://thesvg.org/icons/github-actions/default.svg" height="24" alt="GitHub Actions"> | CI/CD automation pipelines                                                       |

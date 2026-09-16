@@ -86,5 +86,13 @@ func (s *GatewayProfileService) VerifyDomain(
 		)
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "domain verified",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &profilev1.VerifyDomainResponse{}, nil
 }

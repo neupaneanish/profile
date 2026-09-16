@@ -68,5 +68,13 @@ func (s *GatewayProfileService) CreateDomain(
 		s.cfg.Logger.ErrorContext(ctx, "Domain create failed", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "created domain",
+	}
+
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 	return &profilev1.CreateDomainResponse{}, nil
 }

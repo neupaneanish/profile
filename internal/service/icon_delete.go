@@ -12,7 +12,8 @@ func (s *RootProfileService) DeleteIcon(
 	ctx context.Context,
 	req *rootProfilev1.DeleteIconRequest,
 ) (*rootProfilev1.DeleteIconResponse, error) {
-	serviceName := "DeletePlatform"
+	serviceName := "DeleteIcon"
+	userSession := utils.UserSessionContext(ctx)
 
 	id, idErr := utils.ParseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
 	if idErr != nil {
@@ -27,12 +28,20 @@ func (s *RootProfileService) DeleteIcon(
 		affected,
 		err,
 		serviceName,
-		"Platform",
+		"Icon",
 		req.GetId(),
 		s.cfg.Logger,
 	); deleteErr != nil {
 		return nil, deleteErr
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "icon deleted",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.DeleteIconResponse{}, nil
 }

@@ -24,6 +24,7 @@ func TestLoadEnv(t *testing.T) {
 		_ = os.Unsetenv("ENVIRONMENT")
 		_ = os.Unsetenv("TELEMETRY_URL")
 		_ = os.Unsetenv("SERVICE_NAME")
+		_ = os.Unsetenv("REDPANDA_URL")
 	}
 
 	t.Run("Success with all variables", func(t *testing.T) {
@@ -38,6 +39,7 @@ func TestLoadEnv(t *testing.T) {
 		t.Setenv("SERVICE_NAME", "Test Service")
 		t.Setenv("ENVIRONMENT", "production")
 		t.Setenv("TELEMETRY_URL", "127.0.0.1:4317")
+		t.Setenv("REDPANDA_URL", "127.0.0.1:4317")
 
 		env, envErr := config.LoadEnv()
 		require.NoError(t, envErr)
@@ -53,6 +55,7 @@ func TestLoadEnv(t *testing.T) {
 		t.Setenv("DATABASE_PASSWORD", "postgres")
 		t.Setenv("VALKEY_URL", "localhost:6379")
 		t.Setenv("TELEMETRY_URL", "127.0.0.1:4317")
+		t.Setenv("REDPANDA_URL", "127.0.0.1:4317")
 
 		env, envErr := config.LoadEnv()
 		require.NoError(t, envErr)
@@ -103,6 +106,7 @@ func TestLoadEnv(t *testing.T) {
 			"DATABASE_PASSWORD",
 			"VALKEY_URL",
 			"TELEMETRY_URL",
+			"REDPANDA_URL",
 		}
 
 		for _, v := range requiredVariables {

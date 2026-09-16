@@ -29,5 +29,13 @@ func (s *GatewayProfileService) CreateExperience(
 		return nil, err
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "experience created",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProgatewayProfilev1.CreateExperienceResponse{}, nil
 }

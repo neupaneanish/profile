@@ -1,5 +1,3 @@
-//go:build integration
-
 package config_test
 
 import (
@@ -16,6 +14,7 @@ import (
 var (
 	databaseURL string
 	valkeyURL   string
+	redpandaURL string
 )
 
 func TestMain(m *testing.M) {
@@ -30,8 +29,15 @@ func TestMain(m *testing.M) {
 		panic(valkeyErr)
 	}
 
+	rpURL, rpCleanup, rpErr := tests.Redpanda()
+	if rpErr != nil {
+		rpCleanup()
+		panic(rpErr)
+	}
+
 	databaseURL = dbURL
 	valkeyURL = vkURL
+	redpandaURL = rpURL
 
 	code := m.Run()
 
@@ -51,6 +57,7 @@ func TestNewConfig(t *testing.T) {
 		env := &config.Env{
 			DatabaseURL:  databaseURL,
 			ValkeyURL:    valkeyURL,
+			RedpandaURL:  redpandaURL,
 			Port:         "50051",
 			ServiceName:  "Test Service",
 			Environment:  "production",
@@ -61,7 +68,7 @@ func TestNewConfig(t *testing.T) {
 		require.NoError(t, cfgErr)
 		assert.NotNil(t, cfg)
 
-		cfg.Close()
+		cfg.Close(t.Context())
 	})
 
 	t.Run("Invalid Pool", func(t *testing.T) {
@@ -82,6 +89,21 @@ func TestNewConfig(t *testing.T) {
 		env := &config.Env{
 			DatabaseURL: databaseURL,
 			ValkeyURL:   "invalid",
+		}
+
+		cfg, cfgErr := config.NewConfig(t.Context(), env, logger)
+		require.Error(t, cfgErr)
+		assert.Nil(t, cfg)
+	})
+
+	t.Run("Invalid Redpanda", func(t *testing.T) {
+		t.Parallel()
+
+		env := &config.Env{
+			DatabaseURL:   databaseURL,
+			ValkeyURL:     valkeyURL,
+			RedpandaURL:   "invalid",
+			RedpandaGroup: "test",
 		}
 
 		cfg, cfgErr := config.NewConfig(t.Context(), env, logger)

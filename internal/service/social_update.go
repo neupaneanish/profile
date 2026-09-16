@@ -27,6 +27,14 @@ func (s *GatewayProfileService) UpdateSocial(
 		return nil, err
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "social updated",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProfilev1.UpdateSocialResponse{}, nil
 }
 
@@ -53,6 +61,14 @@ func (s *RootProfileService) UpdateSocial(
 	); err != nil {
 		return nil, err
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userID,
+		Message:  "social updated",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.UpdateSocialResponse{}, nil
 }

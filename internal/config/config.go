@@ -16,6 +16,7 @@ type Config struct {
 	Repository repository.Querier
 	Logger     *slog.Logger
 	Resolver   *net.Resolver
+	Redpanda   *Redpanda
 }
 
 func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, error) {
@@ -29,20 +30,29 @@ func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, err
 		return nil, clientErr
 	}
 
+	redpanda, redpandaErr := NewRedpanda(ctx, env.RedpandaURL, env.RedpandaGroup, logger)
+	if redpandaErr != nil {
+		return nil, redpandaErr
+	}
+
 	return &Config{
 		Pool:       pool,
 		Client:     client,
 		Repository: repository.New(pool),
 		Logger:     logger,
 		Resolver:   net.DefaultResolver,
+		Redpanda:   redpanda,
 	}, nil
 }
 
-func (c *Config) Close() {
+func (c *Config) Close(ctx context.Context) {
 	if c.Pool != nil {
 		c.Pool.Close()
 	}
 	if c.Client != nil {
 		c.Client.Close()
+	}
+	if c.Redpanda != nil {
+		_ = c.Redpanda.Close(ctx)
 	}
 }

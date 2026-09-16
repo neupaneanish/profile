@@ -5,6 +5,7 @@ import (
 	"time"
 
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func (s *RootProfileService) CreateIcon(
@@ -12,6 +13,7 @@ func (s *RootProfileService) CreateIcon(
 	req *rootProfilev1.CreateIconRequest,
 ) (*rootProfilev1.CreateIconResponse, error) {
 	serviceName := "CreateIcon"
+	userSession := utils.UserSessionContext(ctx)
 
 	if err := s.createUpdateIcon(
 		ctx,
@@ -22,6 +24,14 @@ func (s *RootProfileService) CreateIcon(
 	); err != nil {
 		return nil, err
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "icon created",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.CreateIconResponse{}, nil
 }

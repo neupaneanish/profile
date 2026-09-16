@@ -39,5 +39,13 @@ func (s *GatewayProfileService) DeleteExperience(
 		return nil, deleteErr
 	}
 
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  userSession.UserID,
+		Username: userSession.Username,
+		UserID:   userSession.UserID,
+		Message:  "experience deleted",
+	}
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+
 	return &gatewayProfilev1.DeleteExperienceResponse{}, nil
 }

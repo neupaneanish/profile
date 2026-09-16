@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"neupaneanish.com.np/profile/internal/config"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
@@ -30,8 +31,10 @@ func (s *GatewayProfileService) UpdateAbout(
 		userSession.UserID,
 		req.GetUpdatedAt().AsTime(),
 		req.GetAbout(),
+		userSession.Username,
 		serviceName,
 		s.cfg.Repository,
+		s.cfg.Redpanda,
 		s.cfg.Logger,
 	)
 	if err != nil {
@@ -59,12 +62,15 @@ func (s *RootProfileService) UpdateAbout(
 		req.GetUpdatedAt().AsTime(),
 		req.GetAbout(),
 		serviceName,
+		userSession.Username,
 		s.cfg.Repository,
+		s.cfg.Redpanda,
 		s.cfg.Logger,
 	)
 	if err != nil {
 		return nil, err
 	}
+
 	return &rootProfilev1.UpdateAboutResponse{About: res}, nil
 }
 
@@ -72,8 +78,9 @@ func updateAbout(
 	ctx context.Context,
 	userID, updatedBy uuid.UUID,
 	updatedAt time.Time,
-	about, serviceName string,
+	about, serviceName, username string,
 	repo repository.Querier,
+	redpanda *config.Redpanda,
 	logger *slog.Logger,
 ) (*profilev1.About, error) {
 	params := &repository.UpdateAboutParams{
@@ -98,6 +105,15 @@ func updateAbout(
 		logger.ErrorContext(ctx, "Update Profile Failed", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  updatedBy,
+		Username: username,
+		UserID:   userID,
+		Message:  "updated about",
+	}
+
+	redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &profilev1.About{
 		UserId:    row.UserID.String(),

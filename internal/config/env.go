@@ -15,12 +15,14 @@ const (
 )
 
 type Env struct {
-	DatabaseURL  string
-	ValkeyURL    string
-	Port         string
-	Environment  string
-	TelemetryURL string
-	ServiceName  string
+	DatabaseURL   string
+	ValkeyURL     string
+	Port          string
+	Environment   string
+	TelemetryURL  string
+	ServiceName   string
+	RedpandaURL   string
+	RedpandaGroup string
 }
 
 func LoadEnv() (*Env, error) {
@@ -32,6 +34,11 @@ func LoadEnv() (*Env, error) {
 	valkeyURL, valkeyURLErr := ValidateEnv("VALKEY_URL")
 	if valkeyURLErr != nil {
 		return nil, valkeyURLErr
+	}
+
+	redpandaURL, redpandaURLErr := ValidateEnv("REDPANDA_URL")
+	if redpandaURLErr != nil {
+		return nil, redpandaURLErr
 	}
 
 	port, portErr := ValidatePort("PORT", "50051")
@@ -52,12 +59,14 @@ func LoadEnv() (*Env, error) {
 	}
 
 	return &Env{
-		DatabaseURL:  databaseURL,
-		ValkeyURL:    valkeyURL,
-		Port:         port,
-		Environment:  environment,
-		TelemetryURL: telemetryURL,
-		ServiceName:  ValidateDefaultEnv("SERVICE_NAME", "neupaneanish.com.np/profile"),
+		DatabaseURL:   databaseURL,
+		ValkeyURL:     valkeyURL,
+		Port:          port,
+		Environment:   environment,
+		TelemetryURL:  telemetryURL,
+		ServiceName:   ValidateDefaultEnv("SERVICE_NAME", "founder-profile"),
+		RedpandaURL:   redpandaURL,
+		RedpandaGroup: ValidateDefaultEnv("REDPANDA_GROUP", "founder-profile"),
 	}, nil
 }
 

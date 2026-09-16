@@ -10,7 +10,7 @@ import (
 )
 
 func Postgres() (string, func(), error) {
-	ctx, cancel := context.WithTimeout(context.Background(), pgContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), containerContextTimeout)
 	container, err := postgres.Run(
 		ctx,
 		"postgres:18-alpine3.23",
@@ -20,7 +20,7 @@ func Postgres() (string, func(), error) {
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(occurrence).
-				WithStartupTimeout(pgContextTimeout),
+				WithStartupTimeout(containerContextTimeout),
 		),
 	)
 	if err != nil {
@@ -40,7 +40,7 @@ func Postgres() (string, func(), error) {
 	}
 
 	cleanup := func() {
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), pgContextTimeout)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), containerContextTimeout)
 		defer shutdownCancel()
 		_ = container.Terminate(shutdownCtx)
 		cancel()
