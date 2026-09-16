@@ -5,7 +5,6 @@ import (
 
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
-	"neupaneanish.com.np/profile/internal/redis"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -41,8 +40,19 @@ func (s *GatewayProfileService) DeleteDomain(
 		return nil, dbErr
 	}
 
-	if vkErr := redis.HDelete[utils.DomainUser](ctx, utils.DomainUserSessionKey, fqdn, s.cfg.Client); vkErr != nil {
-		s.cfg.Logger.ErrorContext(ctx, "Failed to delete fqdn cache", "service", serviceName, "error", vkErr)
+	cmd := s.cfg.Client.B().Hdel().Key(utils.DomainUserSessionKey).Field(fqdn).Build()
+
+	if vkErr := s.cfg.Client.Do(ctx, cmd).Error(); vkErr != nil {
+		s.cfg.Logger.ErrorContext(
+			ctx,
+			"Failed to delete domain user session from valkey",
+			"service",
+			serviceName,
+			"domain",
+			fqdn,
+			"error",
+			vkErr,
+		)
 	}
 
 	return &profilev1.DeleteDomainResponse{}, nil

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"neupaneanish.com.np/profile/internal/config"
 	"neupaneanish.com.np/profile/internal/errs"
 	"neupaneanish.com.np/profile/internal/transport"
 )
@@ -161,7 +160,7 @@ func TestAuthInterceptor(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
-		ct, err := transport.AuthInterceptor(ctx, &config.Config{}, nil, nil, nil)
+		ct, err := transport.AuthInterceptor(ctx, &slog.Logger{}, nil, nil, nil)
 		require.Error(t, err)
 		assert.Equal(t, ctx, ct)
 		assert.Equal(t, errs.ErrInternalServer, err)

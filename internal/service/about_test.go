@@ -15,8 +15,6 @@ import (
 	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
-	"neupaneanish.com.np/profile/internal/redis"
-	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func TestAbout(t *testing.T) {
@@ -170,7 +168,7 @@ func TestAbout(t *testing.T) {
 		assert.Equal(t, errs.ErrNotFound("About"), err)
 	})
 
-	t.Run("External Error no hostname", func(t *testing.T) {
+	t.Run("External Error no metadata", func(t *testing.T) {
 		t.Parallel()
 
 		req := &externalProfilev1.AboutRequest{}
@@ -181,52 +179,13 @@ func TestAbout(t *testing.T) {
 		assert.Equal(t, errs.ErrNotFound("Host"), err)
 	})
 
-	t.Run("External Error Invalid hostname", func(t *testing.T) {
-		t.Parallel()
-
-		hostname := rand.Text()[:8]
-
-		ctx := externalContextWithValue(t, uuid.NewV7(), hostname)
-
-		req := &externalProfilev1.AboutRequest{}
-
-		res, err := externalProfileServiceClient.About(ctx, req)
-		require.Error(t, err)
-		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound("Host"), err)
-	})
-
-	t.Run("External Error Valkey Not Found", func(t *testing.T) {
-		t.Parallel()
-
-		hostname := rand.Text()[:8] + ".com"
-
-		md := metadata.Pairs("x-hostname", hostname)
-		ctx := metadata.NewOutgoingContext(t.Context(), md)
-
-		req := &externalProfilev1.AboutRequest{}
-
-		res, err := externalProfileServiceClient.About(ctx, req)
-		require.Error(t, err)
-		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrNotFound("Host"), err)
-	})
-
 	t.Run("External Error Invalid UserID", func(t *testing.T) {
 		t.Parallel()
 
 		hostname := rand.Text()[:8] + ".com"
 
-		md := metadata.Pairs("x-hostname", hostname)
+		md := metadata.Pairs("x-hostname", hostname, "x-user-id", rand.Text())
 		ctx := metadata.NewOutgoingContext(t.Context(), md)
-
-		data := &utils.DomainUser{
-			Key:    hostname,
-			UserID: rand.Text(),
-		}
-
-		vkErr := redis.HSet[utils.DomainUser](t.Context(), utils.DomainUserSessionKey, data, cfg.Client)
-		require.NoError(t, vkErr)
 
 		req := &externalProfilev1.AboutRequest{}
 

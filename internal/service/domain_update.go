@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
-	"neupaneanish.com.np/profile/internal/redis"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -71,15 +70,16 @@ func (s *GatewayProfileService) VerifyDomain(
 		return nil, errs.ErrConflict
 	}
 
-	data := &utils.DomainUser{
-		Key:    domain.Fqdn,
-		UserID: userSession.UserID.String(),
-	}
+	cmd := s.cfg.Client.B().Hset().
+		Key(utils.DomainUserSessionKey).
+		FieldValue().
+		FieldValue(domain.Fqdn, userSession.UserID.String()).
+		Build()
 
-	if vkErr := redis.HSet[utils.DomainUser](ctx, utils.DomainUserSessionKey, data, s.cfg.Client); vkErr != nil {
+	if vkErr := s.cfg.Client.Do(ctx, cmd).Error(); vkErr != nil {
 		s.cfg.Logger.ErrorContext(
 			ctx,
-			"Failed to Set",
+			"Failed to set domain user session in valkey",
 			"service", serviceName,
 			"domain", domain.Fqdn,
 			"error", vkErr,
