@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
@@ -42,9 +43,10 @@ func (s *GatewayProfileService) CreateAbout(
 		ActorID:  userSession.UserID,
 		Username: userSession.Username,
 		UserID:   userSession.UserID,
-		Message:  "created about",
+		Method:   enum.DBMethodCreate,
+		Table:    enum.DBTableAbout,
 	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &gatewayProfilev1.CreateAboutResponse{
 		About: &profilev1.About{

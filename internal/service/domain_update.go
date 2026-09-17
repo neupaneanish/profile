@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -90,9 +91,10 @@ func (s *GatewayProfileService) VerifyDomain(
 		ActorID:  userSession.UserID,
 		Username: userSession.Username,
 		UserID:   userSession.UserID,
-		Message:  "domain verified",
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableDomain,
 	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &profilev1.VerifyDomainResponse{}, nil
 }

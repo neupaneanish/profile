@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/config"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
@@ -110,10 +111,11 @@ func updateAbout(
 		ActorID:  updatedBy,
 		Username: username,
 		UserID:   userID,
-		Message:  "updated about",
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableAbout,
 	}
 
-	redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &profilev1.About{
 		UserId:    row.UserID.String(),

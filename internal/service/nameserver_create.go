@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -55,9 +56,10 @@ func (s *RootProfileService) CreateNameserver(
 		ActorID:  userSession.UserID,
 		Username: userSession.Username,
 		UserID:   userSession.UserID,
-		Message:  "nameserver created",
+		Method:   enum.DBMethodCreate,
+		Table:    enum.DBTableNameserver,
 	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &profilev1.CreateNameserverResponse{}, nil
 }

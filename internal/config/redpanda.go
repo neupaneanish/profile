@@ -58,9 +58,10 @@ func (r *Redpanda) Produce(
 
 	r.client.Produce(ctx, record, func(rec *kgo.Record, err error) {
 		if err != nil {
-			r.logger.ErrorContext(ctx, "failed to produce message",
+			r.logger.ErrorContext(ctx, "failed to deliver message to redpanda",
 				"service", serviceName,
 				"topic", rec.Topic,
+				"key", string(rec.Key),
 				"error", err,
 			)
 		}

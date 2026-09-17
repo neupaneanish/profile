@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -41,9 +42,10 @@ func (s *GatewayProfileService) CreateProfile(
 		ActorID:  userSession.UserID,
 		Username: userSession.Username,
 		UserID:   userSession.UserID,
-		Message:  "profile created",
+		Method:   enum.DBMethodCreate,
+		Table:    enum.DBTableProfile,
 	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &gatewayProfilev1.CreateProfileResponse{}, nil
 }

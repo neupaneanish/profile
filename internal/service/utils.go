@@ -68,22 +68,24 @@ func deleteDB(
 	ctx context.Context,
 	affected int64,
 	err error,
-	serviceName, table, id, username string,
+	serviceName, id, username string,
+	table enum.DBTable,
 	actorID, userID uuid.UUID,
 	logger *slog.Logger,
 	redpanda *config.Redpanda,
 ) error {
 	if err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Delete %s Failed", table), "service", serviceName, "error", err)
+		logger.ErrorContext(ctx, "delete database record failed", "service", serviceName, "table", table, "error", err)
 		return errs.ErrInternalServer
 	}
 
 	if affected != 1 {
 		logger.WarnContext(
 			ctx,
-			fmt.Sprintf("%s record not found or concurrent modification", table),
+			"record not found or concurrent modification",
 			"service", serviceName,
 			"id", id,
+			"table", table,
 		)
 		return errs.ErrConflict
 	}
@@ -91,22 +93,23 @@ func deleteDB(
 		ActorID:  actorID,
 		Username: username,
 		UserID:   userID,
-		Message:  fmt.Sprintf("delete %s", table),
+		Method:   enum.DBMethodDelete,
+		Table:    table,
 	}
-	redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return nil
 }
 
 func createUpdateEducation(
 	ctx context.Context,
-	id string,
+	id, username, serviceName string,
 	userID, updatedBy uuid.UUID,
 	req *profilev1.CreateUpdateEducation,
 	updatedAt time.Time,
 	repo repository.Querier,
 	logger *slog.Logger,
-	serviceName string,
+	redpanda *config.Redpanda,
 ) error {
 	school := req.GetSchool()
 	degree := req.GetDegree()
@@ -130,13 +133,21 @@ func createUpdateEducation(
 			EndDate:       endDate,
 			Address:       address,
 			Description:   description,
-			CreatedBy:     userID,
-			UpdatedBy:     userID,
+			CreatedBy:     updatedBy,
+			UpdatedBy:     updatedBy,
 		}
 		if _, err := repo.CreateEducation(ctx, params); err != nil {
 			logger.ErrorContext(ctx, "Create Education Failed", "service", serviceName, "error", err)
 			return errs.ErrInternalServer
 		}
+		payload := utils.RedpandaRootEventNotificationPayload{
+			ActorID:  updatedBy,
+			Username: username,
+			UserID:   userID,
+			Method:   enum.DBMethodCreate,
+			Table:    enum.DBTableEducation,
+		}
+		redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 		return nil
 	}
 
@@ -178,18 +189,27 @@ func createUpdateEducation(
 		)
 		return errs.ErrConflict
 	}
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  updatedBy,
+		Username: username,
+		UserID:   userID,
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableEducation,
+	}
+	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+
 	return nil
 }
 
 func createUpdateExperience(
 	ctx context.Context,
-	id string,
+	id, username, serviceName string,
 	userID, updatedBy uuid.UUID,
 	req *profilev1.CreateUpdateExperience,
 	updatedAt time.Time,
 	repo repository.Querier,
 	logger *slog.Logger,
-	serviceName string,
+	redpanda *config.Redpanda,
 ) error {
 	title := req.GetTitle()
 	companyName := req.GetCompanyName()
@@ -217,6 +237,15 @@ func createUpdateExperience(
 			logger.ErrorContext(ctx, "Create Experience Failed", "service", serviceName, "error", err)
 			return errs.ErrInternalServer
 		}
+		payload := utils.RedpandaRootEventNotificationPayload{
+			ActorID:  updatedBy,
+			Username: username,
+			UserID:   userID,
+			Method:   enum.DBMethodCreate,
+			Table:    enum.DBTableExperience,
+		}
+		redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+
 		return nil
 	}
 
@@ -256,6 +285,16 @@ func createUpdateExperience(
 		)
 		return errs.ErrConflict
 	}
+
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  updatedBy,
+		Username: username,
+		UserID:   userID,
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableExperience,
+	}
+	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+
 	return nil
 }
 
@@ -291,9 +330,10 @@ func updateProfile(
 		ActorID:  updatedBy,
 		Username: username,
 		UserID:   userID,
-		Message:  "profile updated",
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableProfile,
 	}
-	redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &profilev1.Profile{
 		UserId:    row.UserID.String(),
@@ -312,9 +352,10 @@ func updateSocial(
 	userID uuid.UUID,
 	updatedBy uuid.UUID,
 	req *profilev1.UpdateSocial,
-	serviceName string,
+	username, serviceName string,
 	repo repository.Querier,
 	logger *slog.Logger,
+	redpanda *config.Redpanda,
 ) error {
 	idx, idxErr := utils.ParseUUID(ctx, req.GetId(), serviceName, logger)
 	if idxErr != nil {
@@ -343,6 +384,15 @@ func updateSocial(
 		)
 		return errs.ErrConflict
 	}
+	payload := utils.RedpandaRootEventNotificationPayload{
+		ActorID:  updatedBy,
+		Username: username,
+		UserID:   userID,
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableSocial,
+	}
+	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+
 	return nil
 }
 
@@ -539,4 +589,93 @@ func (s *GatewayProfileService) validateDomain(ctx context.Context, fqdn, txt, i
 		"user_resolved_ips", hostIps,
 	)
 	return errs.ErrNotFound("IP")
+}
+
+func deleteDatabase(
+	ctx context.Context,
+	id, userIDStr, serviceName string,
+	updatedAt time.Time,
+	table enum.DBTable,
+	repo repository.Querier,
+	logger *slog.Logger,
+	redpanda *config.Redpanda,
+) error {
+	userSession := utils.UserSessionContext(ctx)
+
+	idx, idErr := utils.ParseUUID(ctx, id, serviceName, logger)
+	if idErr != nil {
+		return idErr
+	}
+
+	userID := userSession.UserID
+
+	if userIDStr != "" {
+		parsedID, parsedIDErr := utils.ParseUUID(ctx, userIDStr, serviceName, logger)
+		if parsedIDErr != nil {
+			return parsedIDErr
+		}
+		userID = parsedID
+	}
+
+	var affected int64
+	var err error
+
+	switch table {
+	case enum.DBTableSocial:
+		params := &repository.DeleteSocialParams{
+			ID:        idx,
+			UserID:    userID,
+			UpdatedAt: updatedAt,
+		}
+
+		affected, err = repo.DeleteSocial(ctx, params)
+
+	case enum.DBTableExperience:
+		params := &repository.DeleteExperienceParams{
+			ID:        idx,
+			UserID:    userID,
+			UpdatedAt: updatedAt,
+		}
+
+		affected, err = repo.DeleteExperience(ctx, params)
+
+	case enum.DBTableEducation:
+		params := &repository.DeleteEducationParams{
+			ID:        idx,
+			UserID:    userID,
+			UpdatedAt: updatedAt,
+		}
+
+		affected, err = repo.DeleteEducation(ctx, params)
+
+	case enum.DBTableIcon:
+		params := &repository.DeleteIconParams{
+			ID:        idx,
+			UpdatedAt: updatedAt,
+		}
+
+		affected, err = repo.DeleteIcon(ctx, params)
+
+	case enum.DBTableNameserver:
+		params := &repository.DeleteNameserverParams{
+			ID:        idx,
+			UpdatedAt: updatedAt,
+		}
+
+		affected, err = repo.DeleteNameserver(ctx, params)
+	}
+
+	return deleteDB(
+		ctx,
+		affected,
+		err,
+		serviceName,
+		id,
+		userSession.Username,
+		table,
+		userSession.UserID,
+		userID,
+		logger,
+		redpanda,
+	)
 }

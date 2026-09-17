@@ -18,25 +18,18 @@ func (s *GatewayProfileService) UpdateExperience(
 	if err := createUpdateExperience(
 		ctx,
 		req.GetId(),
+		userSession.Username,
+		serviceName,
 		userSession.UserID,
 		userSession.UserID,
 		req.GetExperience(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
-		serviceName,
+		s.cfg.Redpanda,
 	); err != nil {
 		return nil, err
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Message:  "experience updated",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
-
 	return &gatewayProfilev1.UpdateExperienceResponse{}, nil
 }
 
@@ -55,24 +48,18 @@ func (s *RootProfileService) UpdateExperience(
 	if err := createUpdateExperience(
 		ctx,
 		req.GetId(),
+		userSession.Username,
+		serviceName,
 		userID,
 		userSession.UserID,
 		req.GetExperience(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
-		serviceName,
+		s.cfg.Redpanda,
 	); err != nil {
 		return nil, err
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userID,
-		Message:  "experience updated",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.UpdateExperienceResponse{}, nil
 }

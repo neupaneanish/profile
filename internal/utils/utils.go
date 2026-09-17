@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 )
 
@@ -130,12 +131,13 @@ func ParseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.
 }
 
 type RedpandaRootEventNotificationPayload struct {
-	ActorID  uuid.UUID `json:"actor_id"`
-	Username string    `json:"username"`
-	UserID   uuid.UUID `json:"user_id"`
-	Message  string    `json:"message"`
+	ActorID  uuid.UUID     `json:"actor_id"`
+	Username string        `json:"username"`
+	UserID   uuid.UUID     `json:"user_id"`
+	Method   enum.DBMethod `json:"method"`
+	Table    enum.DBTable  `json:"table"`
 }
 
 const (
-	RedpandaRootEventNotifications = "root-event-notifications"
+	RedpandaRootDatabaseEventNotifications = "root-database-event-notifications"
 )

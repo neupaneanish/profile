@@ -13,12 +13,13 @@ import (
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
+	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
 func TestDeleteExperience(t *testing.T) {
 	t.Parallel()
 
-	t.Run("No Experience", func(t *testing.T) {
+	t.Run("Gateway No Experience", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
 		req := &gatewayProfilev1.DeleteExperienceRequest{
@@ -32,7 +33,7 @@ func TestDeleteExperience(t *testing.T) {
 		assert.Equal(t, errs.ErrConflict, err)
 	})
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Gateway Success", func(t *testing.T) {
 		t.Parallel()
 		userID := uuid.NewV7()
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
@@ -43,6 +44,36 @@ func TestDeleteExperience(t *testing.T) {
 			UpdatedAt: timestamppb.New(experience.UpdatedAt),
 		}
 		res, err := gatewayProfileServiceClient.DeleteExperience(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, res)
+	})
+
+	t.Run("Root No Experience", func(t *testing.T) {
+		t.Parallel()
+		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
+		req := &rootProfilev1.DeleteExperienceRequest{
+			Id:        uuid.NewV7().String(),
+			UserId:    uuid.NewV7().String(),
+			UpdatedAt: timestamppb.New(time.Now()),
+		}
+
+		res, err := rootProfileServiceClient.DeleteExperience(ctx, req)
+		require.Error(t, err)
+		assert.Nil(t, res)
+		assert.Equal(t, errs.ErrConflict, err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
+		experience := getExperience(t, uuid.NewV7())
+
+		req := &rootProfilev1.DeleteExperienceRequest{
+			Id:        experience.ID.String(),
+			UserId:    experience.UserID.String(),
+			UpdatedAt: timestamppb.New(experience.UpdatedAt),
+		}
+		res, err := rootProfileServiceClient.DeleteExperience(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
 	})

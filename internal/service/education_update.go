@@ -18,25 +18,18 @@ func (s *GatewayProfileService) UpdateEducation(
 	if err := createUpdateEducation(
 		ctx,
 		req.GetId(),
+		userSession.Username,
+		serviceName,
 		userSession.UserID,
 		userSession.UserID,
 		req.GetEducation(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
-		serviceName,
+		s.cfg.Redpanda,
 	); err != nil {
 		return nil, err
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Message:  "education updated",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
-
 	return &gatewayProfilev1.UpdateEducationResponse{}, nil
 }
 
@@ -55,24 +48,17 @@ func (s *RootProfileService) UpdateEducation(
 	if err := createUpdateEducation(
 		ctx,
 		req.GetId(),
+		userSession.Username,
+		serviceName,
 		userID,
 		userSession.UserID,
 		req.GetEducation(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Logger,
-		serviceName,
+		s.cfg.Redpanda,
 	); err != nil {
 		return nil, err
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userID,
-		Message:  "education updated",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
-
 	return &rootProfilev1.UpdateEducationResponse{}, nil
 }

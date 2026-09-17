@@ -1,55 +1,52 @@
+//nolint:dupl // Boilerplate delegating to deleteDatabase
 package service
 
 import (
 	"context"
 
+	"neupaneanish.com.np/profile/internal/enum"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
-	"neupaneanish.com.np/profile/internal/repository"
-	"neupaneanish.com.np/profile/internal/utils"
+	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
 func (s *GatewayProfileService) DeleteEducation(
 	ctx context.Context,
 	req *gatewayProfilev1.DeleteEducationRequest,
 ) (*gatewayProfilev1.DeleteEducationResponse, error) {
-	serviceName := "DeleteEducation"
-	userSession := utils.UserSessionContext(ctx)
-
-	id, idErr := utils.ParseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
-	if idErr != nil {
-		return nil, idErr
-	}
-
-	params := &repository.DeleteEducationParams{
-		ID:        id,
-		UserID:    userSession.UserID,
-		UpdatedAt: req.GetUpdatedAt().AsTime(),
-	}
-
-	affected, err := s.cfg.Repository.DeleteEducation(ctx, params)
-	if deleteErr := deleteDB(
+	if err := deleteDatabase(
 		ctx,
-		affected,
-		err,
-		serviceName,
-		"Education",
 		req.GetId(),
-		userSession.Username,
-		userSession.UserID,
-		userSession.UserID,
+		"",
+		"GatewayDeleteEducation",
+		req.GetUpdatedAt().AsTime(),
+		enum.DBTableEducation,
+		s.cfg.Repository,
 		s.cfg.Logger,
 		s.cfg.Redpanda,
-	); deleteErr != nil {
-		return nil, deleteErr
+	); err != nil {
+		return nil, err
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Message:  "education deleted",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
 
 	return &gatewayProfilev1.DeleteEducationResponse{}, nil
+}
+
+func (s *RootProfileService) DeleteEducation(
+	ctx context.Context,
+	req *rootProfilev1.DeleteEducationRequest,
+) (*rootProfilev1.DeleteEducationResponse, error) {
+	if err := deleteDatabase(
+		ctx,
+		req.GetId(),
+		req.GetUserId(),
+		"RootDeleteEducation",
+		req.GetUpdatedAt().AsTime(),
+		enum.DBTableEducation,
+		s.cfg.Repository,
+		s.cfg.Logger,
+		s.cfg.Redpanda,
+	); err != nil {
+		return nil, err
+	}
+
+	return &rootProfilev1.DeleteEducationResponse{}, nil
 }

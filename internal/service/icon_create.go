@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"neupaneanish.com.np/profile/internal/enum"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -29,9 +30,10 @@ func (s *RootProfileService) CreateIcon(
 		ActorID:  userSession.UserID,
 		Username: userSession.Username,
 		UserID:   userSession.UserID,
-		Message:  "icon created",
+		Method:   enum.DBMethodCreate,
+		Table:    enum.DBTableIcon,
 	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.CreateIconResponse{}, nil
 }

@@ -2,60 +2,127 @@ package service
 
 import (
 	"context"
+	"log/slog"
+	"time"
+	"uuid"
 
+	"github.com/valkey-io/valkey-go"
+	"neupaneanish.com.np/profile/internal/config"
+	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
-	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
+	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
+	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func (s *GatewayProfileService) DeleteDomain(
 	ctx context.Context,
-	req *profilev1.DeleteDomainRequest,
-) (*profilev1.DeleteDomainResponse, error) {
-	serviceName := "DeleteDomain"
+	req *gatewayProfilev1.DeleteDomainRequest,
+) (*gatewayProfilev1.DeleteDomainResponse, error) {
+	serviceName := "gatewayDeleteDomain"
 	userSession := utils.UserSessionContext(ctx)
 
-	id, idErr := utils.ParseUUID(ctx, req.GetId(), serviceName, s.cfg.Logger)
-	if idErr != nil {
-		return nil, idErr
+	if err := deleteDomain(
+		ctx,
+		req.GetId(),
+		userSession.Username,
+		req.GetFqdn(),
+		serviceName,
+		userSession.UserID,
+		userSession.UserID,
+		req.GetUpdatedAt().AsTime(),
+		s.cfg.Repository,
+		s.cfg.Client,
+		s.cfg.Logger,
+		s.cfg.Redpanda,
+	); err != nil {
+		return nil, err
 	}
 
-	fqdn := req.GetFqdn()
+	return &gatewayProfilev1.DeleteDomainResponse{}, nil
+}
+
+func (s *RootProfileService) DeleteDomain(
+	ctx context.Context,
+	req *rootProfilev1.DeleteDomainRequest,
+) (*rootProfilev1.DeleteDomainResponse, error) {
+	serviceName := "RootDeleteDomain"
+	userSession := utils.UserSessionContext(ctx)
+
+	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
+	if userIDErr != nil {
+		return nil, userIDErr
+	}
+
+	if err := deleteDomain(
+		ctx,
+		req.GetId(),
+		userSession.Username,
+		req.GetFqdn(),
+		serviceName,
+		userID,
+		userSession.UserID,
+		req.GetUpdatedAt().AsTime(),
+		s.cfg.Repository,
+		s.cfg.Client,
+		s.cfg.Logger,
+		s.cfg.Redpanda,
+	); err != nil {
+		return nil, err
+	}
+
+	return &rootProfilev1.DeleteDomainResponse{}, nil
+}
+
+func deleteDomain(
+	ctx context.Context,
+	id, username, fqdn, serviceName string,
+	userID, updatedBy uuid.UUID,
+	updatedAt time.Time,
+	repo repository.Querier,
+	client valkey.Client,
+	logger *slog.Logger,
+	redpanda *config.Redpanda,
+) error {
+	idx, idErr := utils.ParseUUID(ctx, id, serviceName, logger)
+	if idErr != nil {
+		return idErr
+	}
 
 	if err := utils.ValidateHostname(fqdn, false); err != nil {
-		s.cfg.Logger.ErrorContext(ctx, "Invalid FQDN", "service", serviceName, "error", err)
-		return nil, errs.ErrConflict
+		logger.ErrorContext(ctx, "Invalid FQDN", "service", serviceName, "error", err)
+		return errs.ErrConflict
 	}
 
 	params := &repository.DeleteDomainParams{
-		ID:        id,
-		UserID:    userSession.UserID,
+		ID:        idx,
+		UserID:    userID,
 		Fqdn:      fqdn,
-		UpdatedAt: req.GetUpdatedAt().AsTime(),
+		UpdatedAt: updatedAt,
 	}
 
-	affected, err := s.cfg.Repository.DeleteDomain(ctx, params)
+	affected, err := repo.DeleteDomain(ctx, params)
 	if dbErr := deleteDB(
 		ctx,
 		affected,
 		err,
 		serviceName,
-		"Domain",
-		req.GetId(),
-		userSession.Username,
-		userSession.UserID,
-		userSession.UserID,
-		s.cfg.Logger,
-		s.cfg.Redpanda,
+		id,
+		username,
+		enum.DBTableDomain,
+		updatedBy,
+		userID,
+		logger,
+		redpanda,
 	); dbErr != nil {
-		return nil, dbErr
+		return dbErr
 	}
 
-	cmd := s.cfg.Client.B().Hdel().Key(utils.DomainUserSessionKey).Field(fqdn).Build()
+	cmd := client.B().Hdel().Key(utils.DomainUserSessionKey).Field(fqdn).Build()
 
-	if vkErr := s.cfg.Client.Do(ctx, cmd).Error(); vkErr != nil {
-		s.cfg.Logger.ErrorContext(
+	if vkErr := client.Do(ctx, cmd).Error(); vkErr != nil {
+		logger.ErrorContext(
 			ctx,
 			"Failed to delete domain user session from valkey",
 			"service",
@@ -66,14 +133,5 @@ func (s *GatewayProfileService) DeleteDomain(
 			vkErr,
 		)
 	}
-
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Message:  "domain deleted",
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
-
-	return &profilev1.DeleteDomainResponse{}, nil
+	return nil
 }

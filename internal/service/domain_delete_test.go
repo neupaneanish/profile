@@ -14,6 +14,7 @@ import (
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
+	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
 func TestDeleteDomain(t *testing.T) {
@@ -54,6 +55,47 @@ func TestDeleteDomain(t *testing.T) {
 		}
 
 		res, err := gatewayProfileServiceClient.DeleteDomain(ctx, req)
+		require.Error(t, err)
+		assert.Nil(t, res)
+		assert.Equal(t, errs.ErrConflict, err)
+	})
+
+	t.Run("Root Success", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
+		url := strings.ToLower(rand.Text()[:8]) + ".com"
+		userID := uuid.NewV7()
+
+		domain := getDomain(t, userID, url, "106.132.101", "A")
+
+		req := &rootProfilev1.DeleteDomainRequest{
+			Id:        domain.ID.String(),
+			UserId:    userID.String(),
+			Fqdn:      domain.Fqdn,
+			UpdatedAt: timestamppb.New(domain.UpdatedAt),
+		}
+
+		res, err := rootProfileServiceClient.DeleteDomain(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, res)
+	})
+
+	t.Run("Root Error", func(t *testing.T) {
+		t.Parallel()
+
+		userID := uuid.NewV7()
+
+		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
+
+		req := &rootProfilev1.DeleteDomainRequest{
+			Id:        userID.String(),
+			UserId:    userID.String(),
+			Fqdn:      rand.Text()[:8] + ".com",
+			UpdatedAt: timestamppb.Now(),
+		}
+
+		res, err := rootProfileServiceClient.DeleteDomain(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
 		assert.Equal(t, errs.ErrConflict, err)

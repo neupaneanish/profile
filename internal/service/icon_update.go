@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"neupaneanish.com.np/profile/internal/enum"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -28,9 +29,10 @@ func (s *RootProfileService) UpdateIcon(
 		ActorID:  userSession.UserID,
 		Username: userSession.Username,
 		UserID:   userSession.UserID,
-		Message:  "icon updated",
+		Method:   enum.DBMethodUpdate,
+		Table:    enum.DBTableIcon,
 	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootEventNotifications, serviceName, payload)
+	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
 
 	return &rootProfilev1.UpdateIconResponse{}, nil
 }
