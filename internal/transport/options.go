@@ -74,6 +74,7 @@ func NewOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
 
 func externalEndpoints() map[string]struct{} {
 	return map[string]struct{}{
+		externalProfilev1.ExternalProfileService_Exists_FullMethodName:      {},
 		externalProfilev1.ExternalProfileService_Profile_FullMethodName:     {},
 		externalProfilev1.ExternalProfileService_About_FullMethodName:       {},
 		externalProfilev1.ExternalProfileService_Educations_FullMethodName:  {},
@@ -84,11 +85,12 @@ func externalEndpoints() map[string]struct{} {
 
 func gatewayEndpoints() map[string]struct{} {
 	return map[string]struct{}{
+		// Exists
+		gatewayProfilev1.GatewayProfileService_Exists_FullMethodName: {},
 		// Profile
 		gatewayProfilev1.GatewayProfileService_Profile_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_CreateProfile_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_UpdateProfile_FullMethodName: {},
-		gatewayProfilev1.GatewayProfileService_CheckProfile_FullMethodName:  {},
 		// About
 		gatewayProfilev1.GatewayProfileService_About_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_CreateAbout_FullMethodName: {},
@@ -128,7 +130,8 @@ func rootEndpoints() map[string]struct{} {
 		rootProfilev1.RootProfileService_About_FullMethodName:       {},
 		rootProfilev1.RootProfileService_UpdateAbout_FullMethodName: {},
 		// Domain
-		rootProfilev1.RootProfileService_Domains_FullMethodName: {},
+		rootProfilev1.RootProfileService_Domains_FullMethodName:      {},
+		rootProfilev1.RootProfileService_DeleteDomain_FullMethodName: {},
 		// Nameserver
 		rootProfilev1.RootProfileService_CreateNameserver_FullMethodName: {},
 		rootProfilev1.RootProfileService_DeleteNameserver_FullMethodName: {},
@@ -137,10 +140,12 @@ func rootEndpoints() map[string]struct{} {
 		rootProfilev1.RootProfileService_UpdateEducation_FullMethodName: {},
 		rootProfilev1.RootProfileService_Education_FullMethodName:       {},
 		rootProfilev1.RootProfileService_Educations_FullMethodName:      {},
+		rootProfilev1.RootProfileService_DeleteEducation_FullMethodName: {},
 		// Experience
 		rootProfilev1.RootProfileService_UpdateExperience_FullMethodName: {},
 		rootProfilev1.RootProfileService_Experience_FullMethodName:       {},
 		rootProfilev1.RootProfileService_Experiences_FullMethodName:      {},
+		rootProfilev1.RootProfileService_DeleteExperience_FullMethodName: {},
 		// Icon
 		rootProfilev1.RootProfileService_Icons_FullMethodName:      {},
 		rootProfilev1.RootProfileService_Icon_FullMethodName:       {},
@@ -150,5 +155,6 @@ func rootEndpoints() map[string]struct{} {
 		// Social
 		rootProfilev1.RootProfileService_UpdateSocial_FullMethodName: {},
 		rootProfilev1.RootProfileService_Socials_FullMethodName:      {},
+		rootProfilev1.RootProfileService_DeleteSocial_FullMethodName: {},
 	}
 }
