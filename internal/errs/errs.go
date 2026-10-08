@@ -15,7 +15,7 @@ var (
 	ErrPermissionDenied = status.Error(codes.PermissionDenied, "Don't have access")
 	ErrInvalidUserID    = status.Error(codes.InvalidArgument, "Invalid UserID")
 	ErrInvalidURL       = status.Error(codes.InvalidArgument, "Invalid URL")
-	ErrInvalidIP        = status.Error(codes.InvalidArgument, "Invalid IP")
+	ErrInvalidHostname  = status.Error(codes.InvalidArgument, "Invalid Hostname")
 	ErrConflict         = status.Error(
 		codes.FailedPrecondition,
 		"Something went wrong, please refresh and try again",

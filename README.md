@@ -63,6 +63,8 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, Redpanda, and Valkey
     - [X] `Create` | `Verify` | `Delete` | `List`
 - [X] Social
     - [X] `Create` | `Update` | `Delete` | `List` | `Icons`
+- [X] Template
+    - [X] `List`
 
 ### Root
 
@@ -81,7 +83,9 @@ Distributed Profile Microservice with Go, gRPC, PostgreSQL, Redpanda, and Valkey
 - [X] Nameserver
     - [X] `Create` | `Delete` | `List`
 - [X] Icon
-    - [X] `Create`|`Update` | `Delete` | `List`
+    - [X] `Create`| `Update` | `Delete` | `List`
+- [X] Template
+    - [X] `Create`| `Update` | `Delete` | `List` | `Template Icons`
 
 ---
 
@@ -137,7 +141,6 @@ sqlc generate
 # 5. Execute the tests
 go test -v -tags=unit ./...
 go test -v -tags=integration ./...
-go test -v -tags=e2e ./...
 
 # 6. Launch the local microservice API server
 # (Note: Requires an active OpenTelemetry collector instance, e.g., SigNoz)
@@ -146,7 +149,7 @@ go run cmd/server/main.go
 
 ---
 
-## Coverage ~89.70%
+## Coverage ~89.50%
 
 > Note: Metrics reflect core application logic after filtering out `main.go`, generated protobuf definitions, raw SQL
 > repository code, and test helper suites.

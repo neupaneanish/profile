@@ -5,20 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"slices"
+	"strings"
 	"time"
 	"uuid"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"neupaneanish.com.np/profile/internal/config"
+	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/valkey-io/valkey-go"
 	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/redpanda"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -68,11 +69,12 @@ func deleteDB(
 	ctx context.Context,
 	affected int64,
 	err error,
-	serviceName, id, username string,
-	table enum.DBTable,
-	actorID, userID uuid.UUID,
+	serviceName, id, table string,
+	session *utils.UserSession,
+	userID uuid.UUID,
+	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-	redpanda *config.Redpanda,
 ) error {
 	if err != nil {
 		logger.ErrorContext(ctx, "delete database record failed", "service", serviceName, "table", table, "error", err)
@@ -89,27 +91,33 @@ func deleteDB(
 		)
 		return errs.ErrConflict
 	}
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  actorID,
-		Username: username,
-		UserID:   userID,
-		Method:   enum.DBMethodDelete,
-		Table:    table,
-	}
-	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		session,
+		userID,
+		table,
+		utils.DatabaseMethodDelete,
+		serviceName,
+		client,
+		rpClient,
+		logger,
+	)
 
 	return nil
 }
 
+//nolint:funlen
 func createUpdateEducation(
 	ctx context.Context,
-	id, username, serviceName string,
-	userID, updatedBy uuid.UUID,
+	id, serviceName string,
+	session *utils.UserSession,
+	userID uuid.UUID,
 	req *profilev1.CreateUpdateEducation,
 	updatedAt time.Time,
 	repo repository.Querier,
+	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-	redpanda *config.Redpanda,
 ) error {
 	school := req.GetSchool()
 	degree := req.GetDegree()
@@ -133,21 +141,24 @@ func createUpdateEducation(
 			EndDate:       endDate,
 			Address:       address,
 			Description:   description,
-			CreatedBy:     updatedBy,
-			UpdatedBy:     updatedBy,
+			CreatedBy:     session.UserID,
+			UpdatedBy:     session.UserID,
 		}
 		if _, err := repo.CreateEducation(ctx, params); err != nil {
 			logger.ErrorContext(ctx, "Create Education Failed", "service", serviceName, "error", err)
 			return errs.ErrInternalServer
 		}
-		payload := utils.RedpandaRootEventNotificationPayload{
-			ActorID:  updatedBy,
-			Username: username,
-			UserID:   userID,
-			Method:   enum.DBMethodCreate,
-			Table:    enum.DBTableEducation,
-		}
-		redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+		redpanda.RootNotificationProduce(
+			ctx,
+			session,
+			session.UserID,
+			utils.DatabaseTableEducation,
+			utils.DatabaseMethodCreate,
+			serviceName,
+			client,
+			rpClient,
+			logger,
+		)
 		return nil
 	}
 
@@ -166,7 +177,7 @@ func createUpdateEducation(
 		EndDate:       endDate,
 		Address:       address,
 		Description:   description,
-		UpdatedBy:     updatedBy,
+		UpdatedBy:     session.UserID,
 		ID:            idx,
 		UserID:        userID,
 		UpdatedAt:     updatedAt,
@@ -189,27 +200,33 @@ func createUpdateEducation(
 		)
 		return errs.ErrConflict
 	}
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  updatedBy,
-		Username: username,
-		UserID:   userID,
-		Method:   enum.DBMethodUpdate,
-		Table:    enum.DBTableEducation,
-	}
-	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		session,
+		session.UserID,
+		utils.DatabaseTableEducation,
+		utils.DatabaseMethodUpdate,
+		serviceName,
+		client,
+		rpClient,
+		logger,
+	)
 
 	return nil
 }
 
+//nolint:funlen
 func createUpdateExperience(
 	ctx context.Context,
-	id, username, serviceName string,
-	userID, updatedBy uuid.UUID,
+	id, serviceName string,
+	session *utils.UserSession,
+	userID uuid.UUID,
 	req *profilev1.CreateUpdateExperience,
 	updatedAt time.Time,
 	repo repository.Querier,
+	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-	redpanda *config.Redpanda,
 ) error {
 	title := req.GetTitle()
 	companyName := req.GetCompanyName()
@@ -229,22 +246,25 @@ func createUpdateExperience(
 			StartDate:    startDate,
 			EndDate:      endDate,
 			Description:  description,
-			CreatedBy:    userID,
-			UpdatedBy:    userID,
+			CreatedBy:    session.UserID,
+			UpdatedBy:    session.UserID,
 		}
 
 		if _, err := repo.CreateExperience(ctx, params); err != nil {
 			logger.ErrorContext(ctx, "Create Experience Failed", "service", serviceName, "error", err)
 			return errs.ErrInternalServer
 		}
-		payload := utils.RedpandaRootEventNotificationPayload{
-			ActorID:  updatedBy,
-			Username: username,
-			UserID:   userID,
-			Method:   enum.DBMethodCreate,
-			Table:    enum.DBTableExperience,
-		}
-		redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+		redpanda.RootNotificationProduce(
+			ctx,
+			session,
+			session.UserID,
+			utils.DatabaseTableExperience,
+			utils.DatabaseMethodCreate,
+			serviceName,
+			client,
+			rpClient,
+			logger,
+		)
 
 		return nil
 	}
@@ -262,7 +282,7 @@ func createUpdateExperience(
 		StartDate:    startDate,
 		EndDate:      endDate,
 		Description:  description,
-		UpdatedBy:    updatedBy,
+		UpdatedBy:    session.UserID,
 		ID:           idx,
 		UserID:       userID,
 		UpdatedAt:    updatedAt,
@@ -286,32 +306,37 @@ func createUpdateExperience(
 		return errs.ErrConflict
 	}
 
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  updatedBy,
-		Username: username,
-		UserID:   userID,
-		Method:   enum.DBMethodUpdate,
-		Table:    enum.DBTableExperience,
-	}
-	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		session,
+		session.UserID,
+		utils.DatabaseTableExperience,
+		utils.DatabaseMethodUpdate,
+		serviceName,
+		client,
+		rpClient,
+		logger,
+	)
 
 	return nil
 }
 
 func updateProfile(
 	ctx context.Context,
-	userID, updatedBy uuid.UUID,
+	session *utils.UserSession,
+	userID uuid.UUID,
 	req *profilev1.CreateUpdateProfile,
 	updatedAt time.Time,
-	serviceName, username string,
+	serviceName string,
 	repo repository.Querier,
-	redpanda *config.Redpanda,
+	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-) (*profilev1.Profile, error) {
+) (*repository.Profile, error) {
 	params := &repository.UpdateProfileParams{
 		Name:      req.GetName(),
 		Title:     req.GetTitle(),
-		UpdatedBy: updatedBy,
+		UpdatedBy: session.UserID,
 		UserID:    userID,
 		UpdatedAt: updatedAt,
 	}
@@ -326,36 +351,31 @@ func updateProfile(
 		return nil, errs.ErrInternalServer
 	}
 
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  updatedBy,
-		Username: username,
-		UserID:   userID,
-		Method:   enum.DBMethodUpdate,
-		Table:    enum.DBTableProfile,
-	}
-	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		session,
+		session.UserID,
+		utils.DatabaseTableProfile,
+		utils.DatabaseMethodUpdate,
+		serviceName,
+		client,
+		rpClient,
+		logger,
+	)
 
-	return &profilev1.Profile{
-		UserId:    row.UserID.String(),
-		Name:      row.Name,
-		Title:     row.Title,
-		Dob:       timestamppb.New(row.Dob),
-		CreatedAt: timestamppb.New(row.CreatedAt),
-		CreatedBy: row.CreatedBy.String(),
-		UpdatedAt: timestamppb.New(row.UpdatedAt),
-		UpdatedBy: row.UpdatedBy.String(),
-	}, nil
+	return row, nil
 }
 
 func updateSocial(
 	ctx context.Context,
+	session *utils.UserSession,
 	userID uuid.UUID,
-	updatedBy uuid.UUID,
 	req *profilev1.UpdateSocial,
-	username, serviceName string,
+	serviceName string,
 	repo repository.Querier,
+	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-	redpanda *config.Redpanda,
 ) error {
 	idx, idxErr := utils.ParseUUID(ctx, req.GetId(), serviceName, logger)
 	if idxErr != nil {
@@ -363,7 +383,7 @@ func updateSocial(
 	}
 	params := &repository.UpdateSocialParams{
 		Username:  req.GetUsername(),
-		UpdatedBy: updatedBy,
+		UpdatedBy: session.UserID,
 		ID:        idx,
 		UserID:    userID,
 		UpdatedAt: req.GetUpdatedAt().AsTime(),
@@ -384,14 +404,17 @@ func updateSocial(
 		)
 		return errs.ErrConflict
 	}
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  updatedBy,
-		Username: username,
-		UserID:   userID,
-		Method:   enum.DBMethodUpdate,
-		Table:    enum.DBTableSocial,
-	}
-	redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		session,
+		session.UserID,
+		utils.DatabaseTableSocial,
+		utils.DatabaseMethodUpdate,
+		serviceName,
+		client,
+		rpClient,
+		logger,
+	)
 
 	return nil
 }
@@ -407,36 +430,36 @@ func (s *RootProfileService) createUpdateIcon(
 
 	name := req.GetName()
 
-	site := req.GetSite()
-	siteErr := utils.ValidateHostname(site, false)
-	if siteErr != nil {
-		s.cfg.Logger.WarnContext(ctx, "Invalid Site", "service", serviceName, "error", siteErr)
+	siteHostname := req.GetSiteHostname()
+	siteHostnameErr := utils.ValidateHostname(siteHostname, false)
+	if siteHostnameErr != nil {
+		s.cfg.Logger.WarnContext(ctx, "Invalid Site", "service", serviceName, "error", siteHostnameErr)
 		return errs.ErrInvalidURL
 	}
 
 	siteSuffix := utils.StringValue(req.GetSiteSuffix())
 
-	url := req.GetUrl()
-	urlErr := utils.ValidateHostname(url, true)
-	if urlErr != nil {
-		s.cfg.Logger.WarnContext(ctx, "Invalid URL", "service", serviceName, "error", urlErr)
+	hostname := req.GetHostname()
+	hostnameErr := utils.ValidateHostname(hostname, true)
+	if hostnameErr != nil {
+		s.cfg.Logger.WarnContext(ctx, "Invalid URL", "service", serviceName, "error", hostnameErr)
 		return errs.ErrInvalidURL
 	}
 
-	slug := req.GetSlug()
+	suffix := req.GetSuffix()
 
 	color := req.GetColor()
 
 	if id == "" {
 		params := &repository.CreateIconParams{
-			Name:       name,
-			Site:       site,
-			SiteSuffix: siteSuffix,
-			Url:        url,
-			Slug:       slug,
-			Color:      color,
-			CreatedBy:  userSession.UserID,
-			UpdatedBy:  userSession.UserID,
+			Name:         name,
+			SiteHostname: siteHostname,
+			SiteSuffix:   siteSuffix,
+			Hostname:     hostname,
+			Suffix:       suffix,
+			Color:        color,
+			CreatedBy:    userSession.UserID,
+			UpdatedBy:    userSession.UserID,
 		}
 
 		if _, err := s.cfg.Repository.CreateIcon(ctx, params); err != nil {
@@ -453,14 +476,14 @@ func (s *RootProfileService) createUpdateIcon(
 	}
 
 	params := &repository.UpdateIconParams{
-		Name:       name,
-		Site:       site,
-		SiteSuffix: siteSuffix,
-		Url:        url,
-		Slug:       slug,
-		Color:      color,
-		ID:         idx,
-		UpdatedAt:  updatedAt,
+		Name:         name,
+		SiteHostname: siteHostname,
+		SiteSuffix:   siteSuffix,
+		Hostname:     hostname,
+		Suffix:       suffix,
+		Color:        color,
+		ID:           idx,
+		UpdatedAt:    updatedAt,
 	}
 
 	affected, err := s.cfg.Repository.UpdateIcon(ctx, params)
@@ -490,7 +513,7 @@ func (s *RootProfileService) iconError(
 	if err != nil {
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == pgerrcode.UniqueViolation {
 			switch pgErr.ConstraintName {
-			case utils.IconUniqueViolationSiteSuffix:
+			case utils.IconUniqueViolationSiteHostnameSuffix:
 				s.cfg.Logger.WarnContext(
 					ctx,
 					"Icon Site with suffix already exists",
@@ -498,7 +521,7 @@ func (s *RootProfileService) iconError(
 					serviceName,
 				)
 				return errs.ErrUniqueViolation("Icon Site with suffix")
-			case utils.IconUniqueViolationSiteNoSuffix:
+			case utils.IconUniqueViolationSiteHostnameNoSuffix:
 				s.cfg.Logger.WarnContext(
 					ctx,
 					"Icon Site already exists",
@@ -506,7 +529,7 @@ func (s *RootProfileService) iconError(
 					serviceName,
 				)
 				return errs.ErrUniqueViolation("Icon Site")
-			case utils.IconUniqueViolationURLSlug:
+			case utils.IconUniqueViolationHostnameSuffix:
 				s.cfg.Logger.WarnContext(
 					ctx,
 					"Icon URL already exists",
@@ -535,11 +558,11 @@ func (s *RootProfileService) iconError(
 	return nil
 }
 
-func (s *GatewayProfileService) validateDomain(ctx context.Context, fqdn, txt, ipAdd, serviceName string) error {
+func (s *GatewayProfileService) validateHostname(ctx context.Context, hostname, txt, serviceName string) error {
 	lookupCtx, cancel := context.WithTimeout(ctx, lookupTimeout)
 	defer cancel()
 
-	txtRecords, txtRecordsErr := s.cfg.Resolver.LookupTXT(lookupCtx, fqdn)
+	txtRecords, txtRecordsErr := s.cfg.Resolver.LookupTXT(lookupCtx, hostname)
 	if txtRecordsErr != nil || len(txtRecords) == 0 {
 		s.cfg.Logger.WarnContext(
 			ctx,
@@ -557,48 +580,23 @@ func (s *GatewayProfileService) validateDomain(ctx context.Context, fqdn, txt, i
 			ctx,
 			"domain ownership verification failed: matching token not found in TXT pool",
 			"service", serviceName,
-			"domain", fqdn,
+			"hostname", hostname,
 			"err", txtRecordsErr,
 		)
 		return errs.ErrNotFound("TXT")
 	}
-
-	hostIps, hostIpsErr := s.cfg.Resolver.LookupIP(lookupCtx, "ip", fqdn)
-	if hostIpsErr != nil || len(hostIps) == 0 {
-		s.cfg.Logger.WarnContext(
-			ctx,
-			"domain routing verification failed: host unresolved",
-			"service", serviceName,
-			"fqdn", fqdn,
-			"err", hostIpsErr,
-		)
-		return errs.ErrNotFound("IP")
-	}
-
-	for _, ip := range hostIps {
-		if ip.Equal(net.IP(ipAdd)) {
-			return nil
-		}
-	}
-	s.cfg.Logger.WarnContext(
-		ctx,
-		"User domain does not point to our platform IP structure",
-		"service", serviceName,
-		"fqdn", fqdn,
-		"expected_platform_ip", ipAdd,
-		"user_resolved_ips", hostIps,
-	)
-	return errs.ErrNotFound("IP")
+	return nil
 }
 
 func deleteDatabase(
 	ctx context.Context,
 	id, userIDStr, serviceName string,
 	updatedAt time.Time,
-	table enum.DBTable,
+	table string,
 	repo repository.Querier,
+	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-	redpanda *config.Redpanda,
 ) error {
 	userSession := utils.UserSessionContext(ctx)
 
@@ -621,7 +619,7 @@ func deleteDatabase(
 	var err error
 
 	switch table {
-	case enum.DBTableSocial:
+	case utils.DatabaseTableSocial:
 		params := &repository.DeleteSocialParams{
 			ID:        idx,
 			UserID:    userID,
@@ -630,7 +628,7 @@ func deleteDatabase(
 
 		affected, err = repo.DeleteSocial(ctx, params)
 
-	case enum.DBTableExperience:
+	case utils.DatabaseTableExperience:
 		params := &repository.DeleteExperienceParams{
 			ID:        idx,
 			UserID:    userID,
@@ -639,7 +637,7 @@ func deleteDatabase(
 
 		affected, err = repo.DeleteExperience(ctx, params)
 
-	case enum.DBTableEducation:
+	case utils.DatabaseTableEducation:
 		params := &repository.DeleteEducationParams{
 			ID:        idx,
 			UserID:    userID,
@@ -648,7 +646,7 @@ func deleteDatabase(
 
 		affected, err = repo.DeleteEducation(ctx, params)
 
-	case enum.DBTableIcon:
+	case utils.DatabaseTableIcon:
 		params := &repository.DeleteIconParams{
 			ID:        idx,
 			UpdatedAt: updatedAt,
@@ -656,13 +654,24 @@ func deleteDatabase(
 
 		affected, err = repo.DeleteIcon(ctx, params)
 
-	case enum.DBTableNameserver:
+	case utils.DatabaseTableNameserver:
 		params := &repository.DeleteNameserverParams{
 			ID:        idx,
 			UpdatedAt: updatedAt,
 		}
 
 		affected, err = repo.DeleteNameserver(ctx, params)
+	case utils.DatabaseTableTemplate:
+		params := &repository.DeleteTemplateParams{
+			ID:        idx,
+			UpdatedAt: updatedAt,
+		}
+
+		affected, err = repo.DeleteTemplate(ctx, params)
+
+	default:
+		logger.WarnContext(ctx, "Invalid table", "service", serviceName, "table", table)
+		return errs.ErrInternalServer
 	}
 
 	return deleteDB(
@@ -671,11 +680,131 @@ func deleteDatabase(
 		err,
 		serviceName,
 		id,
-		userSession.Username,
 		table,
+		userSession,
 		userSession.UserID,
-		userID,
+		client,
+		rpClient,
 		logger,
-		redpanda,
+	)
+}
+
+func (s *RootProfileService) createUpdateTemplate(
+	ctx context.Context,
+	req *rootProfilev1.Template,
+	id, serviceName string,
+	updatedAt time.Time,
+) error {
+	userSession := utils.UserSessionContext(ctx)
+	iconID, iconIDErr := utils.ParseUUID(ctx, req.GetIconId(), serviceName, s.cfg.Logger)
+	if iconIDErr != nil {
+		return iconIDErr
+	}
+
+	if id == "" {
+		params := &repository.CreateTemplateParams{
+			IconID:      iconID,
+			Name:        req.GetName(),
+			Description: req.GetDescription(),
+			CreatedBy:   userSession.UserID,
+			UpdatedBy:   userSession.UserID,
+		}
+
+		idx, err := s.cfg.Repository.CreateTemplate(ctx, params)
+		if err != nil {
+			if tErr := s.templateError(ctx, err, serviceName); tErr != nil {
+				return tErr
+			}
+		}
+
+		s.updateTemplateValkey(ctx, userSession, idx, req.GetName(), serviceName)
+
+		return nil
+	}
+
+	idx, idxErr := utils.ParseUUID(ctx, id, serviceName, s.cfg.Logger)
+	if idxErr != nil {
+		return idxErr
+	}
+
+	params := &repository.UpdateTemplateParams{
+		Name:        req.GetName(),
+		IconID:      iconID,
+		Description: req.GetDescription(),
+		UpdatedBy:   userSession.UserID,
+		ID:          idx,
+		UpdatedAt:   updatedAt,
+	}
+
+	row, affectedErr := s.cfg.Repository.UpdateTemplate(ctx, params)
+	if err := s.templateError(ctx, affectedErr, serviceName); err != nil {
+		return err
+	}
+
+	s.updateTemplateValkey(ctx, userSession, row.ID, row.Name, serviceName)
+
+	return nil
+}
+
+func (s *RootProfileService) templateError(ctx context.Context, err error, serviceName string) error {
+	if err != nil {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
+			switch pgErr.Code {
+			case pgerrcode.UniqueViolation:
+				s.cfg.Logger.WarnContext(ctx, "Template name already exists", "service", serviceName, "error", err)
+				return errs.ErrUniqueViolation("Name")
+			default:
+				s.cfg.Logger.WarnContext(ctx, "Icon ID not exists", "service", serviceName, "error", err)
+				return errs.ErrForeignKeyViolation("Icon ID")
+			}
+		}
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			s.cfg.Logger.WarnContext(ctx, "Concurrent template update detected", "service", serviceName, "error", err)
+			return errs.ErrConflict
+		}
+		s.cfg.Logger.WarnContext(
+			ctx,
+			"Failed to create template",
+			"service",
+			serviceName,
+		)
+		return errs.ErrInternalServer
+	}
+	return nil
+}
+
+func (s *RootProfileService) updateTemplateValkey(
+	ctx context.Context,
+	userSession *utils.UserSession,
+	id uuid.UUID,
+	name, serviceName string,
+) {
+	cmd := s.cfg.Client.B().Hset().
+		Key(id.String()).
+		FieldValue().
+		FieldValue("name", strings.ToLower(name)).
+		Build()
+
+	if vkErr := s.cfg.Client.Do(ctx, cmd).Error(); vkErr != nil {
+		s.cfg.Logger.ErrorContext(
+			ctx,
+			"Failed to set template payload in valkey",
+			"service", serviceName,
+			"name", name,
+			"error", vkErr,
+		)
+	}
+
+	redpanda.RootNotificationProduce(
+		ctx,
+		userSession,
+		userSession.UserID,
+		utils.DatabaseTableTemplate,
+		utils.DatabaseMethodUpdate,
+		serviceName,
+		s.cfg.Client,
+		s.cfg.Redpanda,
+		s.cfg.Logger,
 	)
 }

@@ -23,7 +23,7 @@ func (s *GatewayProfileService) Experiences(
 
 	userSession := utils.UserSessionContext(ctx)
 
-	res, err := experiences(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	res, err := internalExperiences(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (s *RootProfileService) Experiences(
 		return nil, userIDErr
 	}
 
-	res, err := experiences(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	res, err := internalExperiences(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,21 @@ func (s *ExternalProfileService) Experiences(
 	serviceName := "ExternalExperiences"
 	userID := utils.DomainUserSessionContext(ctx)
 
-	res, err := experiences(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	rows, err := experiences(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
+	}
+
+	res := make([]*externalProfilev1.Experience, len(rows))
+	for i, e := range rows {
+		res[i] = &externalProfilev1.Experience{
+			Id:          e.ID.String(),
+			UserId:      e.UserID.String(),
+			Title:       e.Title,
+			CompanyName: e.CompanyName,
+			StartDate:   timestamppb.New(e.StartDate),
+			EndDate:     utils.TimestamppbValue(e.EndDate),
+		}
 	}
 
 	return &externalProfilev1.ExperiencesResponse{Experiences: res}, nil
@@ -71,7 +83,7 @@ func experiences(
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
-) ([]*profilev1.Experiences, error) {
+) ([]*repository.ExperiencesRow, error) {
 	params := &repository.ExperiencesParams{UserID: userID}
 
 	rows, err := repo.Experiences(ctx, params)
@@ -80,9 +92,24 @@ func experiences(
 		return nil, errs.ErrInternalServer
 	}
 
-	res := make([]*profilev1.Experiences, len(rows))
+	return rows, nil
+}
+
+func internalExperiences(
+	ctx context.Context,
+	userID uuid.UUID,
+	querier repository.Querier,
+	logger *slog.Logger,
+	serviceName string,
+) ([]*profilev1.Experience, error) {
+	rows, err := experiences(ctx, userID, querier, logger, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*profilev1.Experience, len(rows))
 	for i, e := range rows {
-		res[i] = &profilev1.Experiences{
+		res[i] = &profilev1.Experience{
 			Id:          e.ID.String(),
 			UserId:      e.UserID.String(),
 			Title:       e.Title,

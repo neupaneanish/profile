@@ -30,9 +30,9 @@ func (s *GatewayProfileService) SocialIcons(
 		return nil, errs.ErrInternalServer
 	}
 
-	res := make([]*profilev1.Icons, len(rows))
+	res := make([]*profilev1.Icon, len(rows))
 	for i, p := range rows {
-		res[i] = &profilev1.Icons{
+		res[i] = &profilev1.Icon{
 			Id:   p.ID.String(),
 			Name: p.Name,
 			Icon: p.Icon,
@@ -49,9 +49,21 @@ func (s *GatewayProfileService) Socials(
 	serviceName := "GatewaySocials"
 	userSession := utils.UserSessionContext(ctx)
 
-	res, err := socials(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	rows, err := socials(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
+	}
+
+	res := make([]*gatewayProfilev1.Social, len(rows))
+	for i, row := range rows {
+		res[i] = &gatewayProfilev1.Social{
+			Id:        row.ID.String(),
+			Username:  row.Username,
+			Name:      row.Name,
+			Social:    row.Social,
+			Icon:      row.Icon,
+			UpdatedAt: timestamppb.New(row.UpdatedAt),
+		}
 	}
 
 	return &gatewayProfilev1.SocialsResponse{
@@ -69,9 +81,21 @@ func (s *RootProfileService) Socials(
 		return nil, userIDErr
 	}
 
-	res, err := socials(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	rows, err := socials(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
+	}
+
+	res := make([]*rootProfilev1.Social, len(rows))
+	for i, row := range rows {
+		res[i] = &rootProfilev1.Social{
+			Id:       row.ID.String(),
+			UserId:   row.UserID.String(),
+			Icon:     row.Icon,
+			Username: row.Username,
+			Name:     row.Name,
+			Social:   row.Social,
+		}
 	}
 
 	return &rootProfilev1.SocialsResponse{
@@ -92,12 +116,12 @@ func (s *ExternalProfileService) Socials(
 	}
 
 	res := make([]*externalProfilev1.Socials, len(rows))
-	for i, d := range rows {
+	for i, row := range rows {
 		res[i] = &externalProfilev1.Socials{
-			Id:   d.GetId(),
-			Name: d.GetName(),
-			Url:  d.GetSite(),
-			Icon: d.GetIcon(),
+			Id:     row.ID.String(),
+			Name:   row.Name,
+			Social: row.Social,
+			Icon:   row.Icon,
 		}
 	}
 
@@ -110,7 +134,7 @@ func socials(
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
-) ([]*profilev1.Socials, error) {
+) ([]*repository.SocialsRow, error) {
 	params := &repository.SocialsParams{UserID: userID}
 
 	rows, err := repo.Socials(ctx, params)
@@ -118,22 +142,5 @@ func socials(
 		logger.ErrorContext(ctx, "Failed to fetch socials", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
-
-	res := make([]*profilev1.Socials, len(rows))
-	for i, s := range rows {
-		res[i] = &profilev1.Socials{
-			Id:        s.ID.String(),
-			UserId:    s.UserID.String(),
-			IconId:    s.IconID.String(),
-			Username:  s.Username,
-			Name:      s.Name,
-			Site:      s.Site,
-			Icon:      s.Icon,
-			CreatedAt: timestamppb.New(s.CreatedAt),
-			CreatedBy: s.CreatedBy.String(),
-			UpdatedAt: timestamppb.New(s.UpdatedAt),
-			UpdatedBy: s.UpdatedBy.String(),
-		}
-	}
-	return res, nil
+	return rows, nil
 }

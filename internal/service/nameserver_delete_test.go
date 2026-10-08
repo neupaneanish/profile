@@ -21,7 +21,7 @@ func TestDeleteNameServer(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
-		ns := getNameserver(t, "101.101.1.1", "A")
+		ns := getNameserver(t, getCname(), "neupaneanish.com.np")
 		require.NotNil(t, ns)
 
 		req := &profilev1.DeleteNameserverRequest{

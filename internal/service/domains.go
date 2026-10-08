@@ -6,7 +6,6 @@ import (
 
 	"uuid"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
@@ -55,7 +54,7 @@ func domains(
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
-) ([]*profilev1.Domains, error) {
+) ([]*profilev1.Domain, error) {
 	params := &repository.DomainsParams{UserID: userID}
 
 	rows, err := repo.Domains(ctx, params)
@@ -64,23 +63,14 @@ func domains(
 		return nil, errs.ErrInternalServer
 	}
 
-	res := make([]*profilev1.Domains, len(rows))
-
-	for i, d := range rows {
-		res[i] = &profilev1.Domains{
-			Id:        d.ID.String(),
-			UserId:    d.UserID.String(),
-			IpType:    d.IpType,
-			Ip:        d.Ip,
-			Fqdn:      d.Fqdn,
-			Txt:       d.Txt,
-			Verified:  d.Verified,
-			CreatedAt: timestamppb.New(d.CreatedAt),
-			CreatedBy: d.CreatedBy.String(),
-			UpdatedAt: timestamppb.New(d.UpdatedAt),
-			UpdatedBy: d.UpdatedBy.String(),
+	res := make([]*profilev1.Domain, len(rows))
+	for i, row := range rows {
+		res[i] = &profilev1.Domain{
+			Id:       row.ID.String(),
+			UserId:   row.UserID.String(),
+			Hostname: row.Hostname,
+			Verified: row.Verified,
 		}
 	}
-
 	return res, nil
 }

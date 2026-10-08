@@ -4,9 +4,9 @@ package service
 import (
 	"context"
 
-	"neupaneanish.com.np/profile/internal/enum"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func (s *GatewayProfileService) DeleteEducation(
@@ -19,10 +19,11 @@ func (s *GatewayProfileService) DeleteEducation(
 		"",
 		"GatewayDeleteEducation",
 		req.GetUpdatedAt().AsTime(),
-		enum.DBTableEducation,
+		utils.DatabaseTableEducation,
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}
@@ -40,10 +41,11 @@ func (s *RootProfileService) DeleteEducation(
 		req.GetUserId(),
 		"RootDeleteEducation",
 		req.GetUpdatedAt().AsTime(),
-		enum.DBTableEducation,
+		utils.DatabaseTableEducation,
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

@@ -7,10 +7,9 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
-	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
+	"neupaneanish.com.np/profile/internal/redpanda"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -39,23 +38,23 @@ func (s *GatewayProfileService) CreateAbout(
 		return nil, errs.ErrInternalServer
 	}
 
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Method:   enum.DBMethodCreate,
-		Table:    enum.DBTableAbout,
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		userSession,
+		userSession.UserID,
+		utils.DatabaseTableAbout,
+		utils.DatabaseMethodCreate,
+		serviceName,
+		s.cfg.Client,
+		s.cfg.Redpanda,
+		s.cfg.Logger,
+	)
 
 	return &gatewayProfilev1.CreateAboutResponse{
-		About: &profilev1.About{
+		About: &gatewayProfilev1.About{
 			UserId:    row.UserID.String(),
 			About:     row.About,
-			CreatedAt: timestamppb.New(row.CreatedAt),
-			CreatedBy: row.CreatedBy.String(),
 			UpdatedAt: timestamppb.New(row.UpdatedAt),
-			UpdatedBy: row.UpdatedBy.String(),
 		},
 	}, nil
 }

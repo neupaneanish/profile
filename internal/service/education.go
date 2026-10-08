@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
-	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -23,12 +22,31 @@ func (s *GatewayProfileService) Education(
 	serviceName := "GatewayEducation"
 	userSession := utils.UserSessionContext(ctx)
 
-	res, err := education(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, req.GetId(), serviceName)
+	row, err := education(
+		ctx,
+		req.GetId(),
+		serviceName,
+		userSession.UserID,
+		s.cfg.Repository,
+		s.cfg.Logger,
+	)
 	if err != nil {
 		return nil, err
 	}
+
 	return &gatewayProfilev1.EducationResponse{
-		Education: res,
+		Id:            row.ID.String(),
+		UserId:        row.UserID.String(),
+		School:        row.School,
+		Degree:        row.Degree,
+		Affiliation:   utils.StringpbValue(row.Affiliation),
+		FieldOfStudy:  utils.StringpbValue(row.FieldOfStudy),
+		Concentration: utils.StringpbValue(row.Concentration),
+		StartDate:     timestamppb.New(row.StartDate),
+		EndDate:       utils.TimestamppbValue(row.EndDate),
+		Address:       row.Address,
+		Description:   utils.StringpbValue(row.Description),
+		UpdatedAt:     timestamppb.New(row.UpdatedAt),
 	}, nil
 }
 
@@ -37,29 +55,65 @@ func (s *RootProfileService) Education(
 	req *rootProfilev1.EducationRequest,
 ) (*rootProfilev1.EducationResponse, error) {
 	serviceName := "RootEducation"
+	userSession := utils.UserSessionContext(ctx)
 
 	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
 
-	res, err := education(ctx, userID, s.cfg.Repository, s.cfg.Logger, req.GetId(), serviceName)
+	row, err := education(
+		ctx,
+		req.GetId(),
+		serviceName,
+		userID,
+		s.cfg.Repository,
+		s.cfg.Logger,
+	)
 	if err != nil {
 		return nil, err
 	}
 
+	createdByUsername, updatedByUsername, usernamesErr := utils.GetUsernames(
+		ctx,
+		row.CreatedBy,
+		row.UpdatedBy,
+		userSession,
+		s.cfg.Client,
+		s.cfg.Logger,
+	)
+	if usernamesErr != nil {
+		return nil, usernamesErr
+	}
+
 	return &rootProfilev1.EducationResponse{
-		Education: res,
+		Id:                row.ID.String(),
+		UserId:            row.UserID.String(),
+		School:            row.School,
+		Degree:            row.Degree,
+		Affiliation:       utils.StringpbValue(row.Affiliation),
+		FieldOfStudy:      utils.StringpbValue(row.FieldOfStudy),
+		Concentration:     utils.StringpbValue(row.Concentration),
+		StartDate:         timestamppb.New(row.StartDate),
+		EndDate:           utils.TimestamppbValue(row.EndDate),
+		Address:           row.Address,
+		Description:       utils.StringpbValue(row.Description),
+		CreatedAt:         timestamppb.New(row.CreatedAt),
+		CreatedBy:         row.CreatedBy.String(),
+		UpdatedAt:         timestamppb.New(row.UpdatedAt),
+		UpdatedBy:         row.UpdatedBy.String(),
+		CreatedByUsername: createdByUsername,
+		UpdatedByUsername: updatedByUsername,
 	}, nil
 }
 
 func education(
 	ctx context.Context,
+	id string, serviceName string,
 	userID uuid.UUID,
 	repo repository.Querier,
 	logger *slog.Logger,
-	id string, serviceName string,
-) (*profilev1.Education, error) {
+) (*repository.Education, error) {
 	idx, idxErr := utils.ParseUUID(ctx, id, serviceName, logger)
 	if idxErr != nil {
 		return nil, idxErr
@@ -77,21 +131,5 @@ func education(
 		return nil, errs.ErrInternalServer
 	}
 
-	return &profilev1.Education{
-		Id:            row.ID.String(),
-		UserId:        row.UserID.String(),
-		School:        row.School,
-		Degree:        row.Degree,
-		Affiliation:   utils.StringpbValue(row.Affiliation),
-		FieldOfStudy:  utils.StringpbValue(row.FieldOfStudy),
-		Concentration: utils.StringpbValue(row.Concentration),
-		StartDate:     timestamppb.New(row.StartDate),
-		EndDate:       utils.TimestamppbValue(row.EndDate),
-		Address:       row.Address,
-		Description:   utils.StringpbValue(row.Concentration),
-		CreatedAt:     timestamppb.New(row.CreatedAt),
-		CreatedBy:     row.CreatedBy.String(),
-		UpdatedAt:     timestamppb.New(row.UpdatedAt),
-		UpdatedBy:     row.UpdatedBy.String(),
-	}, nil
+	return row, nil
 }

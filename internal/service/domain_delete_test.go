@@ -28,11 +28,11 @@ func TestDeleteDomain(t *testing.T) {
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 		url := strings.ToLower(rand.Text()[:8]) + ".com"
 
-		domain := getDomain(t, userID, url, "254.132.100", "A")
+		domain := getDomain(t, userID, rand.Text()[:8], url, false)
 
 		req := &profilev1.DeleteDomainRequest{
 			Id:        domain.ID.String(),
-			Fqdn:      domain.Fqdn,
+			Hostname:  domain.Hostname,
 			UpdatedAt: timestamppb.New(domain.UpdatedAt),
 		}
 
@@ -50,7 +50,7 @@ func TestDeleteDomain(t *testing.T) {
 
 		req := &profilev1.DeleteDomainRequest{
 			Id:        userID.String(),
-			Fqdn:      rand.Text()[:8] + ".com",
+			Hostname:  rand.Text()[:8] + ".com",
 			UpdatedAt: timestamppb.Now(),
 		}
 
@@ -67,12 +67,12 @@ func TestDeleteDomain(t *testing.T) {
 		url := strings.ToLower(rand.Text()[:8]) + ".com"
 		userID := uuid.NewV7()
 
-		domain := getDomain(t, userID, url, "106.132.101", "A")
+		domain := getDomain(t, userID, rand.Text()[:8], url, false)
 
 		req := &rootProfilev1.DeleteDomainRequest{
 			Id:        domain.ID.String(),
 			UserId:    userID.String(),
-			Fqdn:      domain.Fqdn,
+			Hostname:  domain.Hostname,
 			UpdatedAt: timestamppb.New(domain.UpdatedAt),
 		}
 
@@ -91,7 +91,7 @@ func TestDeleteDomain(t *testing.T) {
 		req := &rootProfilev1.DeleteDomainRequest{
 			Id:        userID.String(),
 			UserId:    userID.String(),
-			Fqdn:      rand.Text()[:8] + ".com",
+			Hostname:  rand.Text()[:8] + ".com",
 			UpdatedAt: timestamppb.Now(),
 		}
 

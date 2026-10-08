@@ -3,6 +3,7 @@
 package service_test
 
 import (
+	"crypto/rand"
 	"testing"
 	"uuid"
 
@@ -20,9 +21,11 @@ func TestCreateNameServer(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
+		name := rand.Text()[:8]
+
 		req := &profilev1.CreateNameserverRequest{
-			IpType: "A",
-			Ip:     "183.54.120.1",
+			Cname:    getCname(),
+			Hostname: name + ".com",
 		}
 
 		res, err := rootProfileServiceClient.CreateNameserver(ctx, req)
@@ -30,19 +33,21 @@ func TestCreateNameServer(t *testing.T) {
 		assert.NotNil(t, res)
 	})
 
-	t.Run("Private IP", func(t *testing.T) {
+	t.Run("Invalid Hostname", func(t *testing.T) {
 		t.Parallel()
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
+		name := rand.Text()[:8]
+
 		req := &profilev1.CreateNameserverRequest{
-			IpType: "A",
-			Ip:     "192.168.1.1",
+			Cname:    getCname(),
+			Hostname: "sub" + name + ".akjchn",
 		}
 
 		res, err := rootProfileServiceClient.CreateNameserver(ctx, req)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		assert.Equal(t, errs.ErrInvalidIP, err)
+		assert.Equal(t, errs.ErrInvalidHostname, err)
 	})
 
 	t.Run("UniqueViolation", func(t *testing.T) {
@@ -50,14 +55,16 @@ func TestCreateNameServer(t *testing.T) {
 
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleRoot)
 
-		ip := "8.8.8.8"
-		ipType := "A"
+		name := rand.Text()[:8]
 
-		seedNameserver(t, ip, ipType)
+		cname := getCname()
+		hostname := name + ".com"
+
+		seedNameserver(t, cname, hostname)
 
 		req := &profilev1.CreateNameserverRequest{
-			IpType: ipType,
-			Ip:     ip,
+			Cname:    cname,
+			Hostname: hostname,
 		}
 
 		res, err := rootProfileServiceClient.CreateNameserver(ctx, req)

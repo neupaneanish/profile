@@ -17,15 +17,15 @@ func (s *GatewayProfileService) CreateEducation(
 	if err := createUpdateEducation(
 		ctx,
 		"",
-		userSession.Username,
 		serviceName,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetEducation(),
 		time.Time{},
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

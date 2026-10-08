@@ -18,15 +18,15 @@ func (s *GatewayProfileService) CreateExperience(
 	if err := createUpdateExperience(
 		ctx,
 		"",
-		userSession.Username,
 		serviceName,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetExperience(),
 		time.Time{},
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

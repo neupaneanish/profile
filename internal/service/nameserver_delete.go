@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"neupaneanish.com.np/profile/internal/enum"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/utils"
 )
 
 func (s *RootProfileService) DeleteNameserver(
@@ -17,10 +17,11 @@ func (s *RootProfileService) DeleteNameserver(
 		"",
 		"DeleteNameserver",
 		req.GetUpdatedAt().AsTime(),
-		enum.DBTableNameserver,
+		utils.DatabaseTableNameserver,
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

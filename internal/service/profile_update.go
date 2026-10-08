@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/utils"
@@ -17,13 +18,13 @@ func (s *GatewayProfileService) UpdateProfile(
 
 	res, err := updateProfile(
 		ctx,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetProfile(),
 		req.GetUpdatedAt().AsTime(),
 		serviceName,
-		userSession.Username,
 		s.cfg.Repository,
+		s.cfg.Client,
 		s.cfg.Redpanda,
 		s.cfg.Logger,
 	)
@@ -32,7 +33,13 @@ func (s *GatewayProfileService) UpdateProfile(
 	}
 
 	return &gatewayProfilev1.UpdateProfileResponse{
-		Profile: res,
+		Profile: &gatewayProfilev1.Profile{
+			UserId:    res.UserID.String(),
+			Name:      res.Name,
+			Title:     res.Title,
+			Dob:       timestamppb.New(res.Dob),
+			UpdatedAt: timestamppb.New(res.UpdatedAt),
+		},
 	}, nil
 }
 
@@ -50,13 +57,13 @@ func (s *RootProfileService) UpdateProfile(
 
 	res, err := updateProfile(
 		ctx,
+		userSession,
 		userID,
-		userSession.UserID,
 		req.GetProfile(),
 		req.GetUpdatedAt().AsTime(),
 		serviceName,
-		userSession.Username,
 		s.cfg.Repository,
+		s.cfg.Client,
 		s.cfg.Redpanda,
 		s.cfg.Logger,
 	)
@@ -64,7 +71,30 @@ func (s *RootProfileService) UpdateProfile(
 		return nil, err
 	}
 
+	createdByUsername, updatedByUsername, usernamesErr := utils.GetUsernames(
+		ctx,
+		res.CreatedBy,
+		res.UpdatedBy,
+		userSession,
+		s.cfg.Client,
+		s.cfg.Logger,
+	)
+	if usernamesErr != nil {
+		return nil, usernamesErr
+	}
+
 	return &rootProfilev1.UpdateProfileResponse{
-		Profile: res,
+		Profile: &rootProfilev1.Profile{
+			UserId:            res.UserID.String(),
+			Name:              res.Name,
+			Title:             res.Title,
+			Dob:               timestamppb.New(res.Dob),
+			CreatedAt:         timestamppb.New(res.CreatedAt),
+			CreatedBy:         res.CreatedBy.String(),
+			UpdatedAt:         timestamppb.New(res.UpdatedAt),
+			UpdatedBy:         res.UpdatedBy.String(),
+			CreatedByUsername: createdByUsername,
+			UpdatedByUsername: updatedByUsername,
+		},
 	}, nil
 }

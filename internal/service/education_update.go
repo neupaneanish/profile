@@ -18,15 +18,15 @@ func (s *GatewayProfileService) UpdateEducation(
 	if err := createUpdateEducation(
 		ctx,
 		req.GetId(),
-		userSession.Username,
 		serviceName,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetEducation(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}
@@ -48,15 +48,15 @@ func (s *RootProfileService) UpdateEducation(
 	if err := createUpdateEducation(
 		ctx,
 		req.GetId(),
-		userSession.Username,
 		serviceName,
+		userSession,
 		userID,
-		userSession.UserID,
 		req.GetEducation(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

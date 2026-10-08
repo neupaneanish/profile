@@ -41,6 +41,7 @@ func TestEducation(t *testing.T) {
 		res, err := gatewayProfileServiceClient.Education(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
+		assert.NotEmpty(t, res.GetId())
 	})
 
 	t.Run("Not Found Root", func(t *testing.T) {
@@ -68,9 +69,4 @@ func TestEducation(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, res)
 	})
-}
-
-func TestRootEducation(t *testing.T) {
-	t.Parallel()
-
 }

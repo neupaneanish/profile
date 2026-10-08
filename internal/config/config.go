@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/valkey-io/valkey-go"
 	"neupaneanish.com.np/profile/internal/repository"
 )
@@ -16,7 +17,7 @@ type Config struct {
 	Repository repository.Querier
 	Logger     *slog.Logger
 	Resolver   *net.Resolver
-	Redpanda   *Redpanda
+	Redpanda   *kgo.Client
 }
 
 func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, error) {
@@ -30,7 +31,7 @@ func NewConfig(ctx context.Context, env *Env, logger *slog.Logger) (*Config, err
 		return nil, clientErr
 	}
 
-	redpanda, redpandaErr := NewRedpanda(ctx, env.RedpandaURL, env.RedpandaGroup, logger)
+	redpanda, redpandaErr := NewRedpanda(ctx, env.RedpandaURL, env.RedpandaGroup)
 	if redpandaErr != nil {
 		return nil, redpandaErr
 	}
@@ -53,6 +54,9 @@ func (c *Config) Close(ctx context.Context) {
 		c.Client.Close()
 	}
 	if c.Redpanda != nil {
-		_ = c.Redpanda.Close(ctx)
+		if err := c.Redpanda.Flush(ctx); err != nil {
+			c.Logger.ErrorContext(ctx, "failed to flush redpanda", "error", err)
+		}
+		c.Redpanda.Close()
 	}
 }
