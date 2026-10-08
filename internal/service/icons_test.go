@@ -28,7 +28,6 @@ func TestIcons(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.GreaterOrEqual(t, len(res.GetIcons()), 0)
 	})
 
 	t.Run("Icons", func(t *testing.T) {

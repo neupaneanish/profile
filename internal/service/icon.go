@@ -36,16 +36,16 @@ func (s *RootProfileService) Icon(
 	}
 
 	return &rootProfilev1.IconResponse{
-		Id:         row.ID.String(),
-		Name:       row.Name,
-		Site:       row.Site,
-		SiteSuffix: utils.StringpbValue(row.SiteSuffix),
-		Url:        row.Url,
-		Slug:       row.Slug,
-		Color:      row.Color,
-		CreatedAt:  timestamppb.New(row.CreatedAt),
-		CreatedBy:  row.CreatedBy.String(),
-		UpdatedAt:  timestamppb.New(row.UpdatedAt),
-		UpdatedBy:  row.UpdatedBy.String(),
+		Id:           row.ID.String(),
+		Name:         row.Name,
+		SiteHostname: row.SiteHostname,
+		SiteSuffix:   utils.StringpbValue(row.SiteSuffix),
+		Hostname:     row.Hostname,
+		Suffix:       row.Suffix,
+		Color:        row.Color,
+		CreatedAt:    timestamppb.New(row.CreatedAt),
+		CreatedBy:    row.CreatedBy.String(),
+		UpdatedAt:    timestamppb.New(row.UpdatedAt),
+		UpdatedBy:    row.UpdatedBy.String(),
 	}, nil
 }

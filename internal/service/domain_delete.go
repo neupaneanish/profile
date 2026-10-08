@@ -6,9 +6,8 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/valkey-io/valkey-go"
-	"neupaneanish.com.np/profile/internal/config"
-	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
@@ -26,16 +25,15 @@ func (s *GatewayProfileService) DeleteDomain(
 	if err := deleteDomain(
 		ctx,
 		req.GetId(),
-		userSession.Username,
-		req.GetFqdn(),
+		req.GetHostname(),
 		serviceName,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Client,
-		s.cfg.Logger,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}
@@ -58,16 +56,15 @@ func (s *RootProfileService) DeleteDomain(
 	if err := deleteDomain(
 		ctx,
 		req.GetId(),
-		userSession.Username,
-		req.GetFqdn(),
+		req.GetHostname(),
 		serviceName,
+		userSession,
 		userID,
-		userSession.UserID,
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
 		s.cfg.Client,
-		s.cfg.Logger,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}
@@ -77,20 +74,21 @@ func (s *RootProfileService) DeleteDomain(
 
 func deleteDomain(
 	ctx context.Context,
-	id, username, fqdn, serviceName string,
-	userID, updatedBy uuid.UUID,
+	id, hostname, serviceName string,
+	session *utils.UserSession,
+	userID uuid.UUID,
 	updatedAt time.Time,
 	repo repository.Querier,
 	client valkey.Client,
+	rpClient *kgo.Client,
 	logger *slog.Logger,
-	redpanda *config.Redpanda,
 ) error {
 	idx, idErr := utils.ParseUUID(ctx, id, serviceName, logger)
 	if idErr != nil {
 		return idErr
 	}
 
-	if err := utils.ValidateHostname(fqdn, false); err != nil {
+	if err := utils.ValidateHostname(hostname, false); err != nil {
 		logger.ErrorContext(ctx, "Invalid FQDN", "service", serviceName, "error", err)
 		return errs.ErrConflict
 	}
@@ -98,7 +96,7 @@ func deleteDomain(
 	params := &repository.DeleteDomainParams{
 		ID:        idx,
 		UserID:    userID,
-		Fqdn:      fqdn,
+		Hostname:  hostname,
 		UpdatedAt: updatedAt,
 	}
 
@@ -109,26 +107,26 @@ func deleteDomain(
 		err,
 		serviceName,
 		id,
-		username,
-		enum.DBTableDomain,
-		updatedBy,
+		utils.DatabaseTableDomain,
+		session,
 		userID,
+		client,
+		rpClient,
 		logger,
-		redpanda,
 	); dbErr != nil {
 		return dbErr
 	}
 
-	cmd := client.B().Hdel().Key(utils.DomainUserSessionKey).Field(fqdn).Build()
+	cmd := client.B().Hdel().Key(hostname).Field().Field("user_id", "template_id").Build()
 
 	if vkErr := client.Do(ctx, cmd).Error(); vkErr != nil {
 		logger.ErrorContext(
 			ctx,
-			"Failed to delete domain user session from valkey",
+			"Failed to delete domain payload from valkey",
 			"service",
 			serviceName,
-			"domain",
-			fqdn,
+			"hostname",
+			hostname,
 			"error",
 			vkErr,
 		)

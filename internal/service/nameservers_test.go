@@ -22,5 +22,4 @@ func TestNameservers(t *testing.T) {
 	res, err := rootProfileServiceClient.Nameservers(ctx, req)
 	require.NoError(t, err)
 	assert.NotNil(t, res)
-	assert.GreaterOrEqual(t, len(res.GetNameservers()), 0)
 }

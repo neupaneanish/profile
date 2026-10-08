@@ -17,7 +17,7 @@ import (
 	"neupaneanish.com.np/profile/internal/utils"
 )
 
-func TestUpdatePlatform(t *testing.T) {
+func TestUpdateIcon(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Error", func(t *testing.T) {
@@ -31,12 +31,12 @@ func TestUpdatePlatform(t *testing.T) {
 		req := &profilev1.UpdateIconRequest{
 			Id: icon.ID.String(),
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:       icon.Name,
-				Site:       icon.Site,
-				SiteSuffix: utils.StringpbValue(icon.SiteSuffix),
-				Url:        icon.Url,
-				Slug:       icon.Slug,
-				Color:      icon.Color,
+				Name:         icon.Name,
+				SiteHostname: icon.SiteHostname,
+				SiteSuffix:   utils.StringpbValue(icon.SiteSuffix),
+				Hostname:     icon.Hostname,
+				Suffix:       icon.Suffix,
+				Color:        icon.Color,
 			},
 			UpdatedAt: timestamppb.New(icon.UpdatedAt),
 		}
@@ -60,12 +60,12 @@ func TestUpdatePlatform(t *testing.T) {
 		req := &profilev1.UpdateIconRequest{
 			Id: icon.ID.String(),
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:       icon1.Name,
-				Site:       icon.Site,
-				SiteSuffix: utils.StringpbValue(icon.SiteSuffix),
-				Url:        icon.Url,
-				Slug:       icon.Slug,
-				Color:      icon.Color,
+				Name:         icon1.Name,
+				SiteHostname: icon.SiteHostname,
+				SiteSuffix:   utils.StringpbValue(icon.SiteSuffix),
+				Hostname:     icon.Hostname,
+				Suffix:       icon.Suffix,
+				Color:        icon.Color,
 			},
 			UpdatedAt: timestamppb.New(icon.UpdatedAt),
 		}
@@ -91,12 +91,12 @@ func TestUpdatePlatform(t *testing.T) {
 		req := &profilev1.UpdateIconRequest{
 			Id: icon.ID.String(),
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:       icon.Name,
-				Site:       icon.Site,
-				SiteSuffix: utils.StringpbValue(siteSuffix),
-				Url:        icon.Url,
-				Slug:       icon.Slug,
-				Color:      icon.Color,
+				Name:         icon.Name,
+				SiteHostname: icon.SiteHostname,
+				SiteSuffix:   utils.StringpbValue(siteSuffix),
+				Hostname:     icon.Hostname,
+				Suffix:       icon.Suffix,
+				Color:        icon.Color,
 			},
 			UpdatedAt: timestamppb.New(icon.UpdatedAt),
 		}

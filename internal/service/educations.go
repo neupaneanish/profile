@@ -23,7 +23,7 @@ func (s *GatewayProfileService) Educations(
 	serviceName := "GatewayEducations"
 	userSession := utils.UserSessionContext(ctx)
 
-	res, err := educations(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	res, err := internalEducations(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (s *RootProfileService) Educations(
 		return nil, userIDErr
 	}
 
-	res, err := educations(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	res, err := internalEducations(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,21 @@ func (s *ExternalProfileService) Educations(
 	serviceName := "ExternalEducations"
 	userID := utils.DomainUserSessionContext(ctx)
 
-	res, err := educations(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
+	rows, err := educations(ctx, userID, s.cfg.Repository, s.cfg.Logger, serviceName)
 	if err != nil {
 		return nil, err
+	}
+
+	res := make([]*externalProfilev1.Education, len(rows))
+	for i, e := range rows {
+		res[i] = &externalProfilev1.Education{
+			Id:        e.ID.String(),
+			UserId:    e.UserID.String(),
+			School:    e.School,
+			Degree:    e.Degree,
+			StartDate: timestamppb.New(e.StartDate),
+			EndDate:   utils.TimestamppbValue(e.EndDate),
+		}
 	}
 
 	return &externalProfilev1.EducationsResponse{Educations: res}, nil
@@ -71,7 +83,7 @@ func educations(
 	repo repository.Querier,
 	logger *slog.Logger,
 	serviceName string,
-) ([]*profilev1.Educations, error) {
+) ([]*repository.EducationsRow, error) {
 	params := &repository.EducationsParams{UserID: userID}
 
 	rows, err := repo.Educations(ctx, params)
@@ -79,10 +91,24 @@ func educations(
 		logger.ErrorContext(ctx, "Failed to fetch educations", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
+	return rows, nil
+}
 
-	res := make([]*profilev1.Educations, len(rows))
+func internalEducations(
+	ctx context.Context,
+	userID uuid.UUID,
+	querier repository.Querier,
+	logger *slog.Logger,
+	serviceName string,
+) ([]*profilev1.Education, error) {
+	rows, err := educations(ctx, userID, querier, logger, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*profilev1.Education, len(rows))
 	for i, e := range rows {
-		res[i] = &profilev1.Educations{
+		res[i] = &profilev1.Education{
 			Id:        e.ID.String(),
 			UserId:    e.UserID.String(),
 			School:    e.School,

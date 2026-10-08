@@ -20,9 +20,9 @@ func (s *RootProfileService) Icons(
 		return nil, errs.ErrInternalServer
 	}
 
-	res := make([]*profilev1.Icons, len(rows))
+	res := make([]*profilev1.Icon, len(rows))
 	for i, p := range rows {
-		res[i] = &profilev1.Icons{
+		res[i] = &profilev1.Icon{
 			Id:   p.ID.String(),
 			Name: p.Name,
 			Icon: p.Icon,

@@ -23,9 +23,9 @@ func TestDomains(t *testing.T) {
 		userID := uuid.NewV7()
 
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
-		url := strings.ToLower(rand.Text()[:8]) + ".com"
+		hostname := strings.ToLower(rand.Text()[:8]) + ".com"
 
-		seedDomain(t, userID, url, "254.132.101", "A")
+		seedDomain(t, userID, rand.Text()[:8], hostname)
 
 		req := &gatewayProfilev1.DomainsRequest{}
 		res, err := gatewayProfileServiceClient.Domains(ctx, req)
@@ -42,6 +42,6 @@ func TestDomains(t *testing.T) {
 		res, err := rootProfileServiceClient.Domains(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Len(t, res.GetDomains(), 0)
+		assert.Empty(t, res.GetDomains())
 	})
 }

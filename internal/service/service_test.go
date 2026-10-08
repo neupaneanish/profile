@@ -7,7 +7,9 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
+	rand2 "math/rand/v2"
 	"net"
 	"os"
 	"path/filepath"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -33,7 +36,6 @@ import (
 	"neupaneanish.com.np/profile/internal/service"
 	"neupaneanish.com.np/profile/internal/telemetry"
 	"neupaneanish.com.np/profile/internal/transport"
-	"neupaneanish.com.np/profile/internal/utils"
 	"neupaneanish.com.np/profile/tests"
 
 	// Register the file source driver for migrations.
@@ -144,7 +146,7 @@ func setupContainer(logger *slog.Logger) *container {
 
 	rpURL, rpCleanup, rpErr := tests.Redpanda()
 	if rpErr != nil {
-		logger.Error("Failed to start redpanda container", "error", telemetryErr)
+		logger.Error("Failed to start redpanda container", "error", rpErr)
 		os.Exit(1)
 	}
 
@@ -395,9 +397,10 @@ func externalContextWithValue(t *testing.T, userID uuid.UUID, hostname string) c
 	)
 
 	cmd := cfg.Client.B().Hset().
-		Key(utils.DomainUserSessionKey).
+		Key(hostname).
 		FieldValue().
-		FieldValue(hostname, userID.String()).
+		FieldValue("user_id", userID.String()).
+		FieldValue("hostname", hostname).
 		Build()
 
 	err := cfg.Client.Do(t.Context(), cmd).Error()
@@ -407,12 +410,12 @@ func externalContextWithValue(t *testing.T, userID uuid.UUID, hostname string) c
 	return ctx
 }
 
-func seedNameserver(t *testing.T, ip, ipType string) uuid.UUID {
+func seedNameserver(t *testing.T, cname, hostname string) uuid.UUID {
 	t.Helper()
 
 	params := &repository.CreateNameserverParams{
-		Ip:        ip,
-		IpType:    ipType,
+		Cname:     cname,
+		Hostname:  hostname,
 		CreatedBy: uuid.Nil(),
 		UpdatedBy: uuid.Nil(),
 	}
@@ -422,34 +425,30 @@ func seedNameserver(t *testing.T, ip, ipType string) uuid.UUID {
 	return id
 }
 
-func getNameserver(t *testing.T, ip, ipType string) *repository.Nameserver {
+func getNameserver(t *testing.T, cname, hostname string) *repository.Nameserver {
 	t.Helper()
 
-	id := seedNameserver(t, ip, ipType)
+	id := seedNameserver(t, cname, hostname)
+	params := &repository.NameserverParams{ID: id}
 
-	ns, err := cfg.Repository.Nameservers(t.Context())
+	ns, err := cfg.Repository.Nameserver(t.Context(), params)
 	require.NoError(t, err)
 
-	for _, n := range ns {
-		if n.ID == id {
-			return n
-		}
-	}
-	return nil
+	return ns
 }
 
-func seedDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) uuid.UUID {
+func seedDomain(t *testing.T, userID uuid.UUID, cname, hostname string) uuid.UUID {
 	t.Helper()
 
-	nsID := seedNameserver(t, ip, ipType)
+	seedNameserver(t, cname, hostname)
+	seedTemplate(t)
 
 	params := &repository.CreateDomainParams{
-		UserID:       userID,
-		NameserverID: nsID,
-		Fqdn:         url,
-		Txt:          rand.Text(),
-		CreatedBy:    userID,
-		UpdatedBy:    userID,
+		UserID:    userID,
+		Hostname:  hostname,
+		Txt:       rand.Text(),
+		CreatedBy: userID,
+		UpdatedBy: userID,
 	}
 
 	id, err := cfg.Repository.CreateDomain(t.Context(), params)
@@ -457,10 +456,31 @@ func seedDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) uuid.UUI
 	return id
 }
 
-func getDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) *repository.DomainRow {
+func getDomain(t *testing.T, userID uuid.UUID, cname, hostname string, verify bool) *repository.DomainRow {
 	t.Helper()
 
-	id := seedDomain(t, userID, url, ip, ipType)
+	id := seedDomain(t, userID, cname, hostname)
+
+	if verify {
+		params := &repository.DomainParams{
+			ID:     id,
+			UserID: userID,
+		}
+
+		domain, err := cfg.Repository.Domain(t.Context(), params)
+		require.NoError(t, err)
+
+		p := &repository.VerifyDomainParams{
+			UpdatedBy: domain.UserID,
+			ID:        domain.ID,
+			UserID:    domain.UserID,
+			UpdatedAt: domain.UpdatedAt,
+			Txt:       domain.Txt,
+		}
+
+		_, vErr := cfg.Repository.VerifyDomain(t.Context(), p)
+		require.NoError(t, vErr)
+	}
 
 	params := &repository.DomainParams{
 		ID:     id,
@@ -469,20 +489,21 @@ func getDomain(t *testing.T, userID uuid.UUID, url, ip, ipType string) *reposito
 
 	domain, err := cfg.Repository.Domain(t.Context(), params)
 	require.NoError(t, err)
+
 	return domain
 }
 
 func seedIcon(t *testing.T, name string, siteSuffix *string) uuid.UUID {
 	t.Helper()
 	params := &repository.CreateIconParams{
-		Name:       name,
-		Site:       name + ".com",
-		SiteSuffix: siteSuffix,
-		Url:        name + ".com",
-		Slug:       name,
-		Color:      "#FFFFFF",
-		CreatedBy:  uuid.Nil(),
-		UpdatedBy:  uuid.Nil(),
+		Name:         name,
+		SiteHostname: name + ".com",
+		SiteSuffix:   siteSuffix,
+		Hostname:     name + ".com",
+		Suffix:       name,
+		Color:        "#FFFFFF",
+		CreatedBy:    uuid.Nil(),
+		UpdatedBy:    uuid.Nil(),
 	}
 
 	id, err := cfg.Repository.CreateIcon(t.Context(), params)
@@ -518,4 +539,42 @@ func seedSocial(t *testing.T, userID uuid.UUID, username string) (uuid.UUID, uui
 	require.NoError(t, err)
 
 	return icon.ID, id
+}
+
+func seedTemplate(t *testing.T) uuid.UUID {
+	t.Helper()
+
+	iconID := seedIcon(t, strings.ToLower(rand.Text()[:8]), nil)
+
+	params := &repository.CreateTemplateParams{
+		IconID:      iconID,
+		Name:        fmt.Sprintf("Name V%d", rand2.Int64N(999999)),
+		Description: rand.Text(),
+		CreatedBy:   uuid.Nil(),
+		UpdatedBy:   uuid.Nil(),
+	}
+
+	id, err := cfg.Repository.CreateTemplate(t.Context(), params)
+	require.NoError(t, err)
+	return id
+}
+
+func getTemplate(t *testing.T) *repository.TemplateRow {
+	id := seedTemplate(t)
+
+	params := &repository.TemplateParams{ID: id}
+
+	row, err := cfg.Repository.Template(t.Context(), params)
+	require.NoError(t, err)
+	assert.NotNil(t, row)
+
+	return row
+}
+
+func getCname() string {
+	return fmt.Sprintf("cname%d", rand2.Int64N(99999999))
+}
+
+func getHostname() string {
+	return strings.ToLower(rand.Text()[:8]) + ".com"
 }

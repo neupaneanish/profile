@@ -3,15 +3,16 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
-	"net/netip"
 	"time"
 	"uuid"
 
+	"github.com/valkey-io/valkey-go"
 	"golang.org/x/net/publicsuffix"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 )
 
@@ -20,6 +21,24 @@ type ContextKey string
 const (
 	SessionKey       ContextKey = "user_session"
 	DomainSessionKey ContextKey = "domain_user_session"
+
+	DatabaseTableProfile    = "profile"
+	DatabaseTableAbout      = "about"
+	DatabaseTableEducation  = "education"
+	DatabaseTableExperience = "experience"
+	DatabaseTableIcon       = "icon"
+	DatabaseTableSocial     = "social"
+	DatabaseTableNameserver = "nameserver"
+	DatabaseTableDomain     = "domain"
+	DatabaseTableTemplate   = "template"
+
+	DatabaseMethodCreate = "create"
+	DatabaseMethodUpdate = "update"
+	DatabaseMethodDelete = "delete"
+
+	systemUsername                = "system"
+	unknownUsername               = "unknown"
+	RedpandaRootNotificationTopic = "root-notification"
 )
 
 type UserSession struct {
@@ -63,9 +82,9 @@ func StringpbValue(s *string) *wrapperspb.StringValue {
 }
 
 const (
-	IconUniqueViolationSiteSuffix   = "unique_icons_site_with_suffix"
-	IconUniqueViolationSiteNoSuffix = "unique_icons_site_no_suffix"
-	IconUniqueViolationURLSlug      = "unique_url_slug"
+	IconUniqueViolationSiteHostnameSuffix   = "unique_icons_site_hostname_with_suffix"
+	IconUniqueViolationSiteHostnameNoSuffix = "unique_icons_site_hostname_no_suffix"
+	IconUniqueViolationHostnameSuffix       = "unique_hostname_suffix"
 )
 
 func ValidateHostname(hostname string, subDomain bool) error {
@@ -90,27 +109,10 @@ func ValidateHostname(hostname string, subDomain bool) error {
 	return nil
 }
 
-func ValidateIP(ip string) error {
-	addr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return err
-	}
-
-	if addr.IsPrivate() || addr.IsLoopback() || addr.IsLinkLocalUnicast() {
-		return errors.New("private IP not allowed")
-	}
-
-	return nil
-}
-
 type DomainUser struct {
 	Key    string `json:"key"     valkey:",key"`
 	UserID string `json:"user_id"`
 }
-
-const (
-	DomainUserSessionKey = "domain:user:session"
-)
 
 type ExternalUserSession struct {
 	UserID uuid.UUID
@@ -130,14 +132,84 @@ func ParseUUID(ctx context.Context, userIDStr, serviceName string, logger *slog.
 	return userID, nil
 }
 
-type RedpandaRootEventNotificationPayload struct {
-	ActorID  uuid.UUID     `json:"actor_id"`
-	Username string        `json:"username"`
-	UserID   uuid.UUID     `json:"user_id"`
-	Method   enum.DBMethod `json:"method"`
-	Table    enum.DBTable  `json:"table"`
+type RootNotification struct {
+	ActorID       uuid.UUID
+	UserID        uuid.UUID
+	ActorUsername string
+	UserUsername  string
+	Table         string
+	Method        string
 }
 
-const (
-	RedpandaRootDatabaseEventNotifications = "root-database-event-notifications"
-)
+func GetUsernames(
+	ctx context.Context,
+	createdBy, updatedBy uuid.UUID,
+	session *UserSession,
+	client valkey.Client,
+	logger *slog.Logger,
+) (string, string, error) {
+	if createdBy == updatedBy && createdBy == uuid.Nil() {
+		return systemUsername, systemUsername, nil
+	}
+
+	if session.UserID == createdBy && createdBy == updatedBy {
+		return session.Username, session.Username, nil
+	}
+
+	var createdUsername, updateUsername string
+
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		if session.UserID == createdBy {
+			createdUsername = session.Username
+			return nil
+		}
+
+		username, err := getUsername(gCtx, createdBy, client)
+		if err != nil {
+			return err
+		}
+		createdUsername = username
+		return nil
+	})
+
+	g.Go(func() error {
+		if session.UserID == updatedBy {
+			updateUsername = session.Username
+			return nil
+		}
+
+		username, err := getUsername(gCtx, updatedBy, client)
+		if err != nil {
+			return err
+		}
+		updateUsername = username
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		logger.ErrorContext(ctx, "Failed to get username", "error", err)
+		return unknownUsername, unknownUsername, errs.ErrInternalServer
+	}
+
+	return createdUsername, updateUsername, nil
+}
+
+func getUsername(ctx context.Context, userID uuid.UUID, client valkey.Client) (string, error) {
+	if userID == uuid.Nil() {
+		return systemUsername, nil
+	}
+
+	key := fmt.Sprintf("username:%s", userID.String())
+	cmd := client.B().Get().Key(key).Build()
+
+	value, err := client.Do(ctx, cmd).ToString()
+	if err != nil {
+		if valkey.IsValkeyNil(err) {
+			return "notfound", nil
+		}
+		return unknownUsername, err
+	}
+	return value, nil
+}

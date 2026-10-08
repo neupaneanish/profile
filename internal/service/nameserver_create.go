@@ -6,9 +6,9 @@ import (
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"neupaneanish.com.np/profile/internal/enum"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
+	"neupaneanish.com.np/profile/internal/redpanda"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -20,16 +20,16 @@ func (s *RootProfileService) CreateNameserver(
 	serviceName := "CreateNameserver"
 	userSession := utils.UserSessionContext(ctx)
 
-	ip := req.GetIp()
+	hostname := req.GetHostname()
 
-	if err := utils.ValidateIP(ip); err != nil {
-		s.cfg.Logger.WarnContext(ctx, "Private IP", "service", serviceName, "error", err)
-		return nil, errs.ErrInvalidIP
+	if err := utils.ValidateHostname(hostname, false); err != nil {
+		s.cfg.Logger.WarnContext(ctx, "Invalid hostname", "service", serviceName, "error", err)
+		return nil, errs.ErrInvalidHostname
 	}
 
 	params := &repository.CreateNameserverParams{
-		Ip:        ip,
-		IpType:    req.GetIpType(),
+		Hostname:  hostname,
+		Cname:     req.GetCname(),
 		CreatedBy: userSession.UserID,
 		UpdatedBy: userSession.UserID,
 	}
@@ -52,14 +52,17 @@ func (s *RootProfileService) CreateNameserver(
 		return nil, errs.ErrInternalServer
 	}
 
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Method:   enum.DBMethodCreate,
-		Table:    enum.DBTableNameserver,
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		userSession,
+		userSession.UserID,
+		utils.DatabaseTableDomain,
+		utils.DatabaseMethodCreate,
+		serviceName,
+		s.cfg.Client,
+		s.cfg.Redpanda,
+		s.cfg.Logger,
+	)
 
 	return &profilev1.CreateNameserverResponse{}, nil
 }

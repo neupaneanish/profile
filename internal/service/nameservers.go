@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
@@ -22,15 +21,10 @@ func (s *RootProfileService) Nameservers(
 
 	res := make([]*profilev1.Nameservers, len(rows))
 
-	for i, n := range rows {
+	for i, row := range rows {
 		res[i] = &profilev1.Nameservers{
-			Id:        n.ID.String(),
-			Ip:        n.Ip,
-			IpType:    n.IpType,
-			CreatedAt: timestamppb.New(n.CreatedAt),
-			CreatedBy: n.CreatedBy.String(),
-			UpdatedAt: timestamppb.New(n.UpdatedAt),
-			UpdatedBy: n.UpdatedBy.String(),
+			Id:     row.ID.String(),
+			Server: row.Server,
 		}
 	}
 

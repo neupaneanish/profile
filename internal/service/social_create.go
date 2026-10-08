@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"neupaneanish.com.np/profile/internal/enum"
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
+	"neupaneanish.com.np/profile/internal/redpanda"
 	"neupaneanish.com.np/profile/internal/repository"
 	"neupaneanish.com.np/profile/internal/utils"
 )
@@ -34,14 +34,17 @@ func (s *GatewayProfileService) CreateSocial(
 		return nil, sErr
 	}
 
-	payload := utils.RedpandaRootEventNotificationPayload{
-		ActorID:  userSession.UserID,
-		Username: userSession.Username,
-		UserID:   userSession.UserID,
-		Method:   enum.DBMethodCreate,
-		Table:    enum.DBTableSocial,
-	}
-	s.cfg.Redpanda.Produce(ctx, utils.RedpandaRootDatabaseEventNotifications, serviceName, payload)
+	redpanda.RootNotificationProduce(
+		ctx,
+		userSession,
+		userSession.UserID,
+		utils.DatabaseTableDomain,
+		utils.DatabaseMethodCreate,
+		serviceName,
+		s.cfg.Client,
+		s.cfg.Redpanda,
+		s.cfg.Logger,
+	)
 
 	return &profilev1.CreateSocialResponse{}, nil
 }

@@ -18,15 +18,15 @@ func (s *GatewayProfileService) UpdateExperience(
 	if err := createUpdateExperience(
 		ctx,
 		req.GetId(),
-		userSession.Username,
 		serviceName,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetExperience(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}
@@ -48,15 +48,15 @@ func (s *RootProfileService) UpdateExperience(
 	if err := createUpdateExperience(
 		ctx,
 		req.GetId(),
-		userSession.Username,
 		serviceName,
+		userSession,
 		userID,
-		userSession.UserID,
 		req.GetExperience(),
 		req.GetUpdatedAt().AsTime(),
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

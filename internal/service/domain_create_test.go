@@ -18,8 +18,6 @@ import (
 func TestCreateDomain(t *testing.T) {
 	t.Parallel()
 
-	// No nameserver found (ErrInternalServer) because it does already have nameservers because of Parallel
-
 	t.Run("UniqueViolation", func(t *testing.T) {
 		t.Parallel()
 
@@ -27,11 +25,11 @@ func TestCreateDomain(t *testing.T) {
 
 		ctx := contextWithValue(t, userID, enum.UserRoleUser)
 
-		url := strings.ToLower(rand.Text()[:8]) + ".com"
+		hostname := strings.ToLower(rand.Text()[:8]) + ".com"
 
-		seedDomain(t, userID, url, "254.132.122", "A")
+		seedDomain(t, userID, rand.Text()[:8], hostname)
 
-		req := &profilev1.CreateDomainRequest{Url: url}
+		req := &profilev1.CreateDomainRequest{Hostname: hostname}
 
 		res, err := gatewayProfileServiceClient.CreateDomain(ctx, req)
 		require.Error(t, err)
@@ -46,8 +44,9 @@ func TestCreateDomain(t *testing.T) {
 
 		url := strings.ToLower(rand.Text()[:8]) + ".com"
 
-		req := &profilev1.CreateDomainRequest{Url: url}
-		seedNameserver(t, "254.132.127", "A")
+		req := &profilev1.CreateDomainRequest{Hostname: url}
+		seedNameserver(t, rand.Text(), url)
+		seedTemplate(t)
 
 		res, err := gatewayProfileServiceClient.CreateDomain(ctx, req)
 		require.NoError(t, err)
@@ -59,9 +58,9 @@ func TestCreateDomain(t *testing.T) {
 
 		ctx := contextWithValue(t, uuid.NewV7(), enum.UserRoleUser)
 
-		url := strings.ToLower(rand.Text()[:8]) + ".abcd"
+		hostname := strings.ToLower(rand.Text()[:8]) + ".abcd"
 
-		req := &profilev1.CreateDomainRequest{Url: url}
+		req := &profilev1.CreateDomainRequest{Hostname: hostname}
 
 		res, err := gatewayProfileServiceClient.CreateDomain(ctx, req)
 		require.Error(t, err)

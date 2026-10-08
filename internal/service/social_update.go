@@ -17,14 +17,14 @@ func (s *GatewayProfileService) UpdateSocial(
 
 	if err := updateSocial(
 		ctx,
-		userSession.UserID,
+		userSession,
 		userSession.UserID,
 		req.GetSocial(),
-		userSession.Username,
 		serviceName,
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}
@@ -46,14 +46,14 @@ func (s *RootProfileService) UpdateSocial(
 
 	if err := updateSocial(
 		ctx,
+		userSession,
 		userID,
-		userSession.UserID,
 		req.GetSocial(),
-		userSession.Username,
 		serviceName,
 		s.cfg.Repository,
-		s.cfg.Logger,
+		s.cfg.Client,
 		s.cfg.Redpanda,
+		s.cfg.Logger,
 	); err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ import (
 	profilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 )
 
-func TestDeletePlatform(t *testing.T) {
+func TestDeleteIcon(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Success", func(t *testing.T) {

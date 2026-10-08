@@ -31,7 +31,7 @@ func TestSocials(t *testing.T) {
 		res, err := gatewayProfileServiceClient.Socials(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res)
-		assert.Len(t, res.GetSocials(), 0)
+		assert.Empty(t, res.GetSocials())
 	})
 
 	t.Run("Root", func(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
-	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	externalProfilev1 "neupaneanish.com.np/profile/internal/protobuf/external/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
@@ -25,9 +24,17 @@ func (s *GatewayProfileService) Profile(
 	serviceName := "GatewayProfile"
 	userSession := utils.UserSessionContext(ctx)
 
-	res, err := profile(ctx, userSession.UserID, serviceName, s.cfg.Repository, s.cfg.Logger)
+	row, err := profile(ctx, userSession.UserID, serviceName, s.cfg.Repository, s.cfg.Logger)
 	if err != nil {
 		return nil, err
+	}
+
+	res := &gatewayProfilev1.Profile{
+		UserId:    row.UserID.String(),
+		Name:      row.Name,
+		Title:     row.Title,
+		Dob:       timestamppb.New(row.Dob),
+		UpdatedAt: timestamppb.New(row.UpdatedAt),
 	}
 	return &gatewayProfilev1.ProfileResponse{Profile: res}, nil
 }
@@ -37,14 +44,40 @@ func (s *RootProfileService) Profile(
 	req *rootProfilev1.ProfileRequest,
 ) (*rootProfilev1.ProfileResponse, error) {
 	serviceName := "RootProfile"
+	userSession := utils.UserSessionContext(ctx)
 	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
 
-	res, err := profile(ctx, userID, serviceName, s.cfg.Repository, s.cfg.Logger)
+	row, err := profile(ctx, userID, serviceName, s.cfg.Repository, s.cfg.Logger)
 	if err != nil {
 		return nil, err
+	}
+
+	createdByUsername, updatedByUsername, usernameErr := utils.GetUsernames(
+		ctx,
+		row.CreatedBy,
+		row.UpdatedBy,
+		userSession,
+		s.cfg.Client,
+		s.cfg.Logger,
+	)
+	if usernameErr != nil {
+		return nil, usernameErr
+	}
+
+	res := &rootProfilev1.Profile{
+		UserId:            row.UserID.String(),
+		Name:              row.Name,
+		Title:             row.Title,
+		Dob:               timestamppb.New(row.Dob),
+		CreatedAt:         timestamppb.New(row.CreatedAt),
+		CreatedBy:         row.CreatedBy.String(),
+		UpdatedAt:         timestamppb.New(row.UpdatedAt),
+		UpdatedBy:         row.UpdatedBy.String(),
+		CreatedByUsername: createdByUsername,
+		UpdatedByUsername: updatedByUsername,
 	}
 	return &rootProfilev1.ProfileResponse{Profile: res}, nil
 }
@@ -56,14 +89,14 @@ func (s *ExternalProfileService) Profile(
 	serviceName := "ExternalProfile"
 	userID := utils.DomainUserSessionContext(ctx)
 
-	res, err := profile(ctx, userID, serviceName, s.cfg.Repository, s.cfg.Logger)
+	row, err := profile(ctx, userID, serviceName, s.cfg.Repository, s.cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
 
 	return &externalProfilev1.ProfileResponse{
-		Name:  res.GetName(),
-		Title: res.GetTitle(),
+		Name:  row.Name,
+		Title: row.Title,
 	}, nil
 }
 
@@ -73,7 +106,7 @@ func profile(
 	serviceName string,
 	repo repository.Querier,
 	logger *slog.Logger,
-) (*profilev1.Profile, error) {
+) (*repository.Profile, error) {
 	params := &repository.ProfileParams{UserID: userID}
 	row, rowErr := repo.Profile(ctx, params)
 	if rowErr != nil {
@@ -84,14 +117,5 @@ func profile(
 		logger.ErrorContext(ctx, "Profile query failed", "service", serviceName, "error", rowErr)
 		return nil, errs.ErrInternalServer
 	}
-	return &profilev1.Profile{
-		UserId:    row.UserID.String(),
-		Name:      row.Name,
-		Title:     row.Title,
-		Dob:       timestamppb.New(row.Dob),
-		CreatedAt: timestamppb.New(row.CreatedAt),
-		CreatedBy: row.CreatedBy.String(),
-		UpdatedAt: timestamppb.New(row.UpdatedAt),
-		UpdatedBy: row.UpdatedBy.String(),
-	}, nil
+	return row, nil
 }

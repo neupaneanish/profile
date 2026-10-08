@@ -27,11 +27,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  name,
-				Site:  name + ".com",
-				Url:   name + ".com",
-				Slug:  name,
-				Color: "#FFFFFF",
+				Name:         name,
+				SiteHostname: name + ".com",
+				Hostname:     name + ".com",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 
@@ -51,11 +51,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  icon.Name,
-				Site:  name + ".com",
-				Url:   name + ".com",
-				Slug:  name,
-				Color: "#FFFFFF",
+				Name:         icon.Name,
+				SiteHostname: name + ".com",
+				Hostname:     name + ".com",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 
@@ -75,11 +75,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  name,
-				Site:  icon.Site,
-				Url:   name + ".com",
-				Slug:  name,
-				Color: "#FFFFFF",
+				Name:         name,
+				SiteHostname: icon.SiteHostname,
+				Hostname:     name + ".com",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 		res, err := rootProfileServiceClient.CreateIcon(ctx, req)
@@ -98,11 +98,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  name,
-				Site:  name + ".com",
-				Url:   icon.Url,
-				Slug:  icon.Slug,
-				Color: "#FFFFFF",
+				Name:         name,
+				SiteHostname: name + ".com",
+				Hostname:     icon.Hostname,
+				Suffix:       icon.Suffix,
+				Color:        "#FFFFFF",
 			},
 		}
 
@@ -120,19 +120,16 @@ func TestCreateIcon(t *testing.T) {
 
 		suffix := "/" + name
 
-		var siteSuffix *string
-		siteSuffix = &suffix
-
-		icon := getIcon(t, name+name, siteSuffix)
+		icon := getIcon(t, name+name, &suffix)
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:       name,
-				Site:       icon.Site,
-				SiteSuffix: utils.StringpbValue(icon.SiteSuffix),
-				Url:        name + ".com",
-				Slug:       name,
-				Color:      "#FFFFFF",
+				Name:         name,
+				SiteHostname: icon.SiteHostname,
+				SiteSuffix:   utils.StringpbValue(icon.SiteSuffix),
+				Hostname:     name + ".com",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 
@@ -150,11 +147,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  name,
-				Site:  "sub." + name + ".com",
-				Url:   name + ".com",
-				Slug:  name,
-				Color: "#FFFFFF",
+				Name:         name,
+				SiteHostname: "sub." + name + ".com",
+				Hostname:     name + ".com",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 
@@ -172,11 +169,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  name,
-				Site:  name + ".com",
-				Url:   name + ".amc",
-				Slug:  name,
-				Color: "#FFFFFF",
+				Name:         name,
+				SiteHostname: name + ".com",
+				Hostname:     name + ".amc",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 
@@ -194,11 +191,11 @@ func TestCreateIcon(t *testing.T) {
 
 		req := &profilev1.CreateIconRequest{
 			Icon: &profilev1.CreateUpdateIcon{
-				Name:  name,
-				Site:  "abc.cde" + name + ".com",
-				Url:   name + ".com",
-				Slug:  name,
-				Color: "#FFFFFF",
+				Name:         name,
+				SiteHostname: "abc.cde" + name + ".com",
+				Hostname:     name + ".com",
+				Suffix:       name,
+				Color:        "#FFFFFF",
 			},
 		}
 

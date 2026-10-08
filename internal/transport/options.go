@@ -33,7 +33,7 @@ func NewOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
 	validator, validatorErr := protovalidate.New()
 	if validatorErr != nil {
 		cfg.Logger.Error("proto validate", "error", validatorErr)
-		return nil, validatorErr
+		return nil, errs.ErrInternalServer
 	}
 
 	recoveryOpt := recovery.WithRecoveryHandler(func(p any) error {
@@ -85,8 +85,6 @@ func externalEndpoints() map[string]struct{} {
 
 func gatewayEndpoints() map[string]struct{} {
 	return map[string]struct{}{
-		// Exists
-		gatewayProfilev1.GatewayProfileService_Exists_FullMethodName: {},
 		// Profile
 		gatewayProfilev1.GatewayProfileService_Profile_FullMethodName:       {},
 		gatewayProfilev1.GatewayProfileService_CreateProfile_FullMethodName: {},
@@ -96,10 +94,12 @@ func gatewayEndpoints() map[string]struct{} {
 		gatewayProfilev1.GatewayProfileService_CreateAbout_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_UpdateAbout_FullMethodName: {},
 		// Domain
-		gatewayProfilev1.GatewayProfileService_CreateDomain_FullMethodName: {},
-		gatewayProfilev1.GatewayProfileService_VerifyDomain_FullMethodName: {},
-		gatewayProfilev1.GatewayProfileService_DeleteDomain_FullMethodName: {},
-		gatewayProfilev1.GatewayProfileService_Domains_FullMethodName:      {},
+		gatewayProfilev1.GatewayProfileService_CreateDomain_FullMethodName:         {},
+		gatewayProfilev1.GatewayProfileService_VerifyDomain_FullMethodName:         {},
+		gatewayProfilev1.GatewayProfileService_UpdateDomainTemplate_FullMethodName: {},
+		gatewayProfilev1.GatewayProfileService_DeleteDomain_FullMethodName:         {},
+		gatewayProfilev1.GatewayProfileService_Domains_FullMethodName:              {},
+		gatewayProfilev1.GatewayProfileService_Domain_FullMethodName:               {},
 		// Education
 		gatewayProfilev1.GatewayProfileService_CreateEducation_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_UpdateEducation_FullMethodName: {},
@@ -118,6 +118,8 @@ func gatewayEndpoints() map[string]struct{} {
 		gatewayProfilev1.GatewayProfileService_UpdateSocial_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_DeleteSocial_FullMethodName: {},
 		gatewayProfilev1.GatewayProfileService_Socials_FullMethodName:      {},
+		// Template
+		gatewayProfilev1.GatewayProfileService_Templates_FullMethodName: {},
 	}
 }
 
@@ -131,11 +133,13 @@ func rootEndpoints() map[string]struct{} {
 		rootProfilev1.RootProfileService_UpdateAbout_FullMethodName: {},
 		// Domain
 		rootProfilev1.RootProfileService_Domains_FullMethodName:      {},
+		rootProfilev1.RootProfileService_Domain_FullMethodName:       {},
 		rootProfilev1.RootProfileService_DeleteDomain_FullMethodName: {},
 		// Nameserver
 		rootProfilev1.RootProfileService_CreateNameserver_FullMethodName: {},
 		rootProfilev1.RootProfileService_DeleteNameserver_FullMethodName: {},
 		rootProfilev1.RootProfileService_Nameservers_FullMethodName:      {},
+		rootProfilev1.RootProfileService_Nameserver_FullMethodName:       {},
 		// Education
 		rootProfilev1.RootProfileService_UpdateEducation_FullMethodName: {},
 		rootProfilev1.RootProfileService_Education_FullMethodName:       {},
@@ -155,6 +159,14 @@ func rootEndpoints() map[string]struct{} {
 		// Social
 		rootProfilev1.RootProfileService_UpdateSocial_FullMethodName: {},
 		rootProfilev1.RootProfileService_Socials_FullMethodName:      {},
+		rootProfilev1.RootProfileService_Social_FullMethodName:       {},
 		rootProfilev1.RootProfileService_DeleteSocial_FullMethodName: {},
+		// Templates
+		rootProfilev1.RootProfileService_CreateTemplate_FullMethodName: {},
+		rootProfilev1.RootProfileService_UpdateTemplate_FullMethodName: {},
+		rootProfilev1.RootProfileService_Templates_FullMethodName:      {},
+		rootProfilev1.RootProfileService_Template_FullMethodName:       {},
+		rootProfilev1.RootProfileService_DeleteTemplate_FullMethodName: {},
+		rootProfilev1.RootProfileService_TemplateIcons_FullMethodName:  {},
 	}
 }

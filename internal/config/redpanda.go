@@ -2,79 +2,48 @@ package config
 
 import (
 	"context"
-	"encoding/json"
-	"log/slog"
-	"time"
+	"errors"
 
+	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"neupaneanish.com.np/profile/internal/utils"
 )
 
-type Redpanda struct {
-	client *kgo.Client
-	logger *slog.Logger
-}
-
-func NewRedpanda(ctx context.Context, url, group string, logger *slog.Logger) (*Redpanda, error) {
-	client, clientErr := kgo.NewClient(
+func NewRedpanda(ctx context.Context, url, group string) (*kgo.Client, error) {
+	client, err := kgo.NewClient(
 		kgo.SeedBrokers(url),
 		kgo.ConsumerGroup(group),
+		kgo.AllowAutoTopicCreation(),
+		kgo.WithContext(ctx),
 	)
-	if clientErr != nil {
-		return nil, clientErr
-	}
-	if err := client.Ping(ctx); err != nil {
-		client.Close()
+	if err != nil {
 		return nil, err
 	}
 
-	return &Redpanda{
-		client: client,
-		logger: logger,
-	}, nil
-}
-
-func (r *Redpanda) Produce(
-	ctx context.Context,
-	topic, serviceName string,
-	payload utils.RedpandaRootEventNotificationPayload,
-) {
-	value, err := json.Marshal(payload)
-	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to produce message",
-			"service", serviceName,
-			"topic", topic,
-			"payload", payload,
-			"error", err,
-		)
-		return
-	}
-	record := &kgo.Record{
-		Key:       []byte(payload.UserID.String()),
-		Value:     value,
-		Timestamp: time.Now().UTC(),
-		Topic:     topic,
+	if pingErr := client.Ping(ctx); pingErr != nil {
+		client.Close()
+		return nil, pingErr
 	}
 
-	r.client.Produce(ctx, record, func(rec *kgo.Record, err error) {
-		if err != nil {
-			r.logger.ErrorContext(ctx, "failed to deliver message to redpanda",
-				"service", serviceName,
-				"topic", rec.Topic,
-				"key", string(rec.Key),
-				"error", err,
-			)
+	cl := kadm.NewClient(client)
+	responses, topicErr := cl.CreateTopics(ctx, 1, 1, nil,
+		utils.RedpandaRootNotificationTopic,
+	)
+
+	if topicErr != nil {
+		client.Close()
+		return nil, topicErr
+	}
+
+	for _, resp := range responses {
+		if resp.Err != nil {
+			if !errors.Is(resp.Err, kerr.TopicAlreadyExists) {
+				client.Close()
+				return nil, resp.Err
+			}
 		}
-	})
-}
-
-func (r *Redpanda) Close(ctx context.Context) error {
-	if err := r.client.Flush(ctx); err != nil {
-		r.logger.ErrorContext(ctx, "failed to flush redpanda records on shutdown", "error", err)
-		r.client.Close()
-		return err
 	}
 
-	r.client.Close()
-	return nil
+	return client, nil
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
-	profilev1 "neupaneanish.com.np/profile/internal/protobuf/common/profile/v1"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	rootProfilev1 "neupaneanish.com.np/profile/internal/protobuf/root/profile/v1"
 	"neupaneanish.com.np/profile/internal/repository"
@@ -23,12 +22,21 @@ func (s *GatewayProfileService) Experience(
 	serviceName := "GatewayExperience"
 	userSession := utils.UserSessionContext(ctx)
 
-	res, err := experience(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, req.GetId(), serviceName)
+	row, err := experience(ctx, userSession.UserID, s.cfg.Repository, s.cfg.Logger, req.GetId(), serviceName)
 	if err != nil {
 		return nil, err
 	}
 	return &gatewayProfilev1.ExperienceResponse{
-		Experience: res,
+		Id:           row.ID.String(),
+		UserId:       row.UserID.String(),
+		Title:        row.Title,
+		CompanyName:  row.CompanyName,
+		Location:     row.Location,
+		LocationType: string(row.LocationType),
+		StartDate:    timestamppb.New(row.StartDate),
+		EndDate:      utils.TimestamppbValue(row.EndDate),
+		Description:  utils.StringpbValue(row.Description),
+		UpdatedAt:    timestamppb.New(row.UpdatedAt),
 	}, nil
 }
 
@@ -37,19 +45,46 @@ func (s *RootProfileService) Experience(
 	req *rootProfilev1.ExperienceRequest,
 ) (*rootProfilev1.ExperienceResponse, error) {
 	serviceName := "RootExperience"
+	userSession := utils.UserSessionContext(ctx)
 
 	userID, userIDErr := utils.ParseUUID(ctx, req.GetUserId(), serviceName, s.cfg.Logger)
 	if userIDErr != nil {
 		return nil, userIDErr
 	}
 
-	res, err := experience(ctx, userID, s.cfg.Repository, s.cfg.Logger, req.GetId(), serviceName)
+	row, err := experience(ctx, userID, s.cfg.Repository, s.cfg.Logger, req.GetId(), serviceName)
 	if err != nil {
 		return nil, err
 	}
 
+	createdByUsername, updatedByUsername, usernamesErr := utils.GetUsernames(
+		ctx,
+		row.CreatedBy,
+		row.UpdatedBy,
+		userSession,
+		s.cfg.Client,
+		s.cfg.Logger,
+	)
+	if usernamesErr != nil {
+		return nil, usernamesErr
+	}
+
 	return &rootProfilev1.ExperienceResponse{
-		Experience: res,
+		Id:                row.ID.String(),
+		UserId:            row.UserID.String(),
+		Title:             row.Title,
+		CompanyName:       row.CompanyName,
+		Location:          row.Location,
+		LocationType:      string(row.LocationType),
+		StartDate:         timestamppb.New(row.StartDate),
+		EndDate:           utils.TimestamppbValue(row.EndDate),
+		Description:       utils.StringpbValue(row.Description),
+		CreatedAt:         timestamppb.New(row.CreatedAt),
+		CreatedBy:         row.CreatedBy.String(),
+		UpdatedAt:         timestamppb.New(row.UpdatedAt),
+		UpdatedBy:         row.UpdatedBy.String(),
+		CreatedByUsername: createdByUsername,
+		UpdatedByUsername: updatedByUsername,
 	}, nil
 }
 
@@ -59,7 +94,7 @@ func experience(
 	repo repository.Querier,
 	logger *slog.Logger,
 	id string, serviceName string,
-) (*profilev1.Experience, error) {
+) (*repository.Experience, error) {
 	idx, idxErr := utils.ParseUUID(ctx, id, serviceName, logger)
 	if idxErr != nil {
 		return nil, idxErr
@@ -76,20 +111,5 @@ func experience(
 		logger.ErrorContext(ctx, "Experience query failed", "service", serviceName, "error", err)
 		return nil, errs.ErrInternalServer
 	}
-
-	return &profilev1.Experience{
-		Id:           row.ID.String(),
-		UserId:       row.UserID.String(),
-		Title:        row.Title,
-		CompanyName:  row.CompanyName,
-		Location:     row.Location,
-		LocationType: string(row.LocationType),
-		StartDate:    timestamppb.New(row.StartDate),
-		EndDate:      utils.TimestamppbValue(row.EndDate),
-		Description:  utils.StringpbValue(row.Description),
-		CreatedAt:    timestamppb.New(row.CreatedAt),
-		CreatedBy:    row.CreatedBy.String(),
-		UpdatedAt:    timestamppb.New(row.UpdatedAt),
-		UpdatedBy:    row.UpdatedBy.String(),
-	}, nil
+	return row, nil
 }
