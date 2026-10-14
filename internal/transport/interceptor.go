@@ -128,10 +128,10 @@ func authContext(
 ) (context.Context, error) {
 	xUserID := metadataDetail(ctx, "x-user-id")
 	xRole := metadataDetail(ctx, "x-role")
-	xJti := metadataDetail(ctx, "x-jti")
+	xSession := metadataDetail(ctx, "x-session")
 	xUsername := metadataDetail(ctx, "x-username")
 
-	hasUserDetail := xUserID != "" && xRole != "" && xJti != "" && xUsername != ""
+	hasUserDetail := xUserID != "" && xRole != "" && xSession != "" && xUsername != ""
 	if !hasUserDetail {
 		logger.WarnContext(ctx,
 			"missing required gateway headers",
@@ -139,6 +139,7 @@ func authContext(
 			"user_id", xUserID,
 			"role", xRole,
 			"username", xUsername,
+			"session", xSession,
 		)
 		return ctx, errs.ErrUnauthenticated
 	}
@@ -162,7 +163,7 @@ func authContext(
 	ctx = logging.InjectFields(ctx, logging.Fields{
 		"user_id", userID.String(),
 		"role", xRole,
-		"jti", xJti,
+		"session", xSession,
 		"username", xUsername,
 	})
 
