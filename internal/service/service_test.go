@@ -261,11 +261,13 @@ func testClientServer(cfg *config.Config, logger *slog.Logger) (*grpc.ClientConn
 func contextWithValue(t *testing.T, userID uuid.UUID, role enum.UserRole) context.Context {
 	t.Helper()
 
+	session := rand.Text()
+
 	md := metadata.Pairs(
 		"x-user-id", userID.String(),
 		"x-role", string(role),
-		"x-jti", uuid.NewV7().String(),
-		"x-username", rand.Text()[:8],
+		"x-session", session,
+		"x-username", session[:8],
 	)
 
 	ctx := metadata.NewOutgoingContext(t.Context(), md)
