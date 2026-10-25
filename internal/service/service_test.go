@@ -285,7 +285,7 @@ func seedProfile(t *testing.T, userID uuid.UUID) {
 		CreatedBy: userID,
 		UpdatedBy: userID,
 	}
-	createErr := cfg.Repository.CreateProfile(t.Context(), params)
+	_, createErr := cfg.Repository.CreateProfile(t.Context(), params)
 	require.NoError(t, createErr)
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"neupaneanish.com.np/profile/internal/errs"
 	gatewayProfilev1 "neupaneanish.com.np/profile/internal/protobuf/gateway/profile/v1"
 	"neupaneanish.com.np/profile/internal/redpanda"
@@ -29,7 +30,8 @@ func (s *GatewayProfileService) CreateProfile(
 		UpdatedBy: userSession.UserID,
 	}
 
-	if err := s.cfg.Repository.CreateProfile(ctx, params); err != nil {
+	row, err := s.cfg.Repository.CreateProfile(ctx, params)
+	if err != nil {
 		if pgxErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgxErr.Code == pgerrcode.UniqueViolation {
 			s.cfg.Logger.WarnContext(ctx, "Profile already created", "service", serviceName)
 			return nil, errs.ErrUniqueViolation("Profile")
@@ -50,5 +52,13 @@ func (s *GatewayProfileService) CreateProfile(
 		s.cfg.Logger,
 	)
 
-	return &gatewayProfilev1.CreateProfileResponse{}, nil
+	return &gatewayProfilev1.CreateProfileResponse{
+		Profile: &gatewayProfilev1.Profile{
+			UserId:    row.UserID.String(),
+			Name:      row.Name,
+			Title:     row.Title,
+			Dob:       timestamppb.New(row.Dob),
+			UpdatedAt: timestamppb.New(row.UpdatedAt),
+		},
+	}, nil
 }
