@@ -120,6 +120,8 @@ func gatewayEndpoints() map[string]struct{} {
 		gatewayProfilev1.GatewayProfileService_Socials_FullMethodName:      {},
 		// Template
 		gatewayProfilev1.GatewayProfileService_Templates_FullMethodName: {},
+		// Counts
+		gatewayProfilev1.GatewayProfileService_Counts_FullMethodName: {},
 	}
 }
 
@@ -168,5 +170,7 @@ func rootEndpoints() map[string]struct{} {
 		rootProfilev1.RootProfileService_Template_FullMethodName:       {},
 		rootProfilev1.RootProfileService_DeleteTemplate_FullMethodName: {},
 		rootProfilev1.RootProfileService_TemplateIcons_FullMethodName:  {},
+		// Counts
+		rootProfilev1.RootProfileService_Counts_FullMethodName: {},
 	}
 }
